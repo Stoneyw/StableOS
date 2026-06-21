@@ -205,13 +205,26 @@
   };
 
   // ── Override login to auto-boot sync ─────────────────────────────────────
+  // Strategy: run local login first (works from seed), then pull Supabase
+  // data in the background and refresh the page so the dashboard reloads
+  // with live data. This avoids returning a Promise to synchronous callers.
   const origLogin = window.DB.login.bind(window.DB);
   window.DB.login = async function (email, pw) {
+    // 1. Local (seed) login — synchronous, always works on first load
     const result = origLogin(email, pw);
-    if (result && !result.error) {
-      await window.DB_SYNC.boot(email, pw);
-      window.DB_SYNC._patchWrites();
-    }
+    if (!result || result.error) return result;
+
+    // 2. Boot Supabase in background — pull live data into localStorage
+    window.DB_SYNC.boot(email, pw).then(ok => {
+      if (ok) {
+        window.DB_SYNC._patchWrites();
+        // Reload app shell so dashboard reads fresh Supabase data
+        if (typeof window.__reloadDashboard === 'function') {
+          window.__reloadDashboard();
+        }
+      }
+    });
+
     return result;
   };
 

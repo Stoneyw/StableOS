@@ -113,7 +113,7 @@ function LoginScreen({onLogin}){
   const submit=e=>{
     e.preventDefault();if(!email||!pw){setErr('Enter email and password.');return;}
     setLoading(true);setErr('');
-    setTimeout(()=>{const a=db.login(email,pw);setLoading(false);a?onLogin(a):setErr('Invalid email or password.');},600);
+    setTimeout(async ()=>{const a=await Promise.resolve(db.login(email,pw));setLoading(false);a&&!a.error?onLogin(a):setErr('Invalid email or password.');},600);
   };
   return <div style={{height:'100vh',background:'#EBE2CF',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
     <div style={{width:'100%',maxWidth:420}}>
@@ -1707,8 +1707,14 @@ function App(){
     if(tok)sessionStorage.removeItem('stableos_token');
     return db.getAuth();
   });
+  const [shellKey,setShellKey]=React.useState(0);
+  // Called by db.sync.js after Supabase data lands in localStorage
+  React.useEffect(()=>{
+    window.__reloadDashboard=()=>setShellKey(k=>k+1);
+    return ()=>{delete window.__reloadDashboard;};
+  },[]);
   if(!auth)return <LoginScreen onLogin={setAuth}/>;
-  return <AppShell auth={auth} onLogout={()=>{db.logout();setAuth(null);}}/>;
+  return <AppShell key={shellKey} auth={auth} onLogout={()=>{db.logout();setAuth(null);}}/>;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>

@@ -123,10 +123,10 @@ function LoginScreen({onLogin}){
     e.preventDefault();
     if(!email||!pw){setErr('Enter your email and password.');return;}
     setLoading(true);setErr('');
-    setTimeout(()=>{
+    setTimeout(async ()=>{
       setLoading(false);
-      const a=window.DB.platformLogin(email,pw);
-      if(a) onLogin(a);
+      const a=await Promise.resolve(window.DB.platformLogin(email,pw));
+      if(a&&!a.error) onLogin(a);
       else setErr('Invalid email or password.');
     },900);
   };
