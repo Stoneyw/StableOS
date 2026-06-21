@@ -1,0 +1,297 @@
+<!-- @dsCard group="StableOS" viewport="1440x860" name="Onboarding Wizard" subtitle="6-step new barn setup flow — account, barn info, logo, plan, staff, launch" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StableOS — Set up your barn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="./js/db.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#EBE2CF;min-height:100vh;-webkit-font-smoothing:antialiased}
+input,select,textarea{font-family:inherit}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const DS = window.StableOSDesignSystem_8c3955 || {};
+const { Input, Select, Button } = DS;
+
+const iS = {width:'100%',padding:'10px 13px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#FFFDF7',color:'#2f2a23',boxSizing:'border-box'};
+const lS = {display:'block',fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4};
+const Inp = ({label,placeholder,type='text',value,onChange}) => <div style={{display:'flex',flexDirection:'column',gap:4}}>
+  {label && <label style={lS}>{label}</label>}
+  <input type={type} placeholder={placeholder} value={value} onChange={e=>onChange&&onChange(e.target.value)} style={iS} />
+</div>;
+const Sel = ({label,options,value,onChange}) => <div style={{display:'flex',flexDirection:'column',gap:4}}>
+  {label && <label style={lS}>{label}</label>}
+  <select value={value} onChange={e=>onChange&&onChange(e.target.value)} style={{...iS,background:`#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9081' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center`,appearance:'none',paddingRight:32,cursor:'pointer'}}>
+    {options.map(o => <option key={o} value={o}>{o}</option>)}
+  </select>
+</div>;
+const Btn = ({variant='primary',onClick,children,disabled,fullWidth}) => {
+  const v = {primary:{background:'#1C3A2E',color:'#F1EBDB',boxShadow:'0 4px 12px rgba(28,58,46,.25)'},secondary:{background:'#FBF6EC',color:'#5a5345',border:'1px solid #E4D9C0'},amber:{background:'#C99A4A',color:'#1C3A2E'}}[variant]||{};
+  return <button disabled={disabled} onClick={onClick} style={{display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'12px 22px',fontSize:14,fontWeight:600,borderRadius:11,border:'none',cursor:disabled?'not-allowed':'pointer',opacity:disabled?.55:1,width:fullWidth?'100%':undefined,fontFamily:'inherit',...v}}>{children}</button>;
+};
+
+// Point this at your deployed StableOS API. When the endpoint isn't reachable
+// (e.g. previewing the design), we fall back to a local demo so the flow still
+// completes. The real backend lives in the developer handoff package.
+const API_BASE = ''; // e.g. 'https://yourdomain.com'
+
+const FACILITY_MAP = {
+  'Boarding facility':'boarding','Breeding farm':'breeding','Training center':'training',
+  'Riding school':'riding_school','Private stable':'private','Other':'other'
+};
+
+async function submitOnboarding(data) {
+  const payload = {
+    email: data.email,
+    password: data.pw,
+    barnName: data.barnName,
+    facilityType: FACILITY_MAP[data.barnType] || 'boarding',
+    address: data.address || undefined,
+    phone: data.phone || undefined,
+    plan: (data.plan || 'Professional').toLowerCase(),
+  };
+  const res = await fetch(`${API_BASE}/api/onboarding`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err.error && err.error.message) || 'Could not create your account.');
+  }
+  return res.json(); // { token, company, user }
+}
+
+const STEPS = ['Account','Barn info','Logo','Choose plan','Add staff','All set!'];
+
+const PLANS = [
+  {name:'Basic',price:'$99',horses:'50 horses',users:'5 users',color:'#3C7A57'},
+  {name:'Professional',price:'$199',horses:'200 horses',users:'20 users',color:'#C99A4A',hi:true},
+  {name:'Enterprise',price:'$399',horses:'Unlimited',users:'Unlimited users',color:'#1C3A2E'},
+];
+
+function App() {
+  const [step, setStep] = React.useState(0);
+  const [data, setData] = React.useState({
+    email:'', pw:'', barnName:'', barnType:'Boarding facility', address:'', phone:'',
+    plan:'Professional', staffName:'', staffEmail:'', staffRole:'Manager'
+  });
+  const upd = (k,v) => setData(d => ({...d,[k]:v}));
+
+  const [submitting, setSubmitting] = React.useState(false);
+  const [apiError, setApiError]     = React.useState('');
+
+  // Finish setup → create the company account via the real API, demo-fallback otherwise.
+  const finishSetup = async () => {
+    setSubmitting(true); setApiError('');
+    try {
+      const result = await submitOnboarding(data);
+      try { sessionStorage.setItem('stableos_token', result.token); } catch(e){}
+      setStep(5);
+    } catch (e) {
+      // No backend reachable (design preview) — provision the tenant locally so
+      // the whole flow works end-to-end in the browser.
+      console.warn('Onboarding API unavailable, provisioning tenant locally:', e.message);
+      try {
+        window.DB.signup({
+          email: data.email, password: data.pw, barnName: data.barnName,
+          facilityType: data.barnType, address: data.address, phone: data.phone,
+          plan: data.plan, staffName: data.staffName, staffEmail: data.staffEmail, staffRole: data.staffRole
+        });
+      } catch(err){ console.error('Local signup failed', err); }
+      setStep(5);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const pct = Math.round((step / (STEPS.length-1))*100);
+
+  return (
+    <div style={{minHeight:'100vh',background:'#EBE2CF',display:'flex',flexDirection:'column'}}>
+      {/* Top bar */}
+      <div style={{height:60,background:'rgba(247,242,231,.9)',backdropFilter:'blur(8px)',borderBottom:'1px solid #E4D9C0',display:'flex',alignItems:'center',padding:'0 32px',gap:12,position:'sticky',top:0,zIndex:10}}>
+        <div style={{width:30,height:30,borderRadius:8,background:'linear-gradient(150deg,#C99A4A,#9c7026)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1C3A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg>
+        </div>
+        <span style={{fontFamily:'Spectral,serif',fontWeight:700,fontSize:15,color:'#23201C'}}>StableOS</span>
+        <div style={{flex:1}}/>
+        <span style={{fontSize:12,color:'#8A8170',fontWeight:500}}>Setting up your barn workspace</span>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{height:4,background:'#E8DFCC'}}>
+        <div style={{height:'100%',width:`${pct}%`,background:'linear-gradient(90deg,#3C7A57,#5a9b71)',transition:'width .4s ease',borderRadius:'0 3px 3px 0'}}/>
+      </div>
+
+      {/* Content */}
+      <div style={{flex:1,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'48px 24px'}}>
+        <div style={{width:'100%',maxWidth:560}}>
+          {/* Step indicators */}
+          <div style={{display:'flex',alignItems:'center',gap:0,marginBottom:36,background:'#fff',border:'1px solid #E8DFCC',borderRadius:13,padding:'6px',overflow:'hidden'}}>
+            {STEPS.map((s,i) => (
+              <div key={s} onClick={()=>i<step&&setStep(i)} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:5,padding:'7px 4px',borderRadius:9,background:i===step?'#1C3A2E':i<step?'#E5F0E7':'transparent',cursor:i<step?'pointer':'default',transition:'.2s'}}>
+                <div style={{width:18,height:18,borderRadius:'50%',background:i===step?'rgba(255,255,255,.2)':i<step?'#3C7A57':'#E8DFCC',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:9,fontWeight:700,color:i===step?'#F1EBDB':i<step?'#fff':'#9a9081'}}>
+                  {i<step ? '✓' : i+1}
+                </div>
+                <span style={{fontSize:11,fontWeight:600,color:i===step?'#F1EBDB':i<step?'#3C7A57':'#9a9081',whiteSpace:'nowrap'}}>{s}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Card */}
+          <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:18,padding:'32px 32px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+            {/* STEP 0 — Account */}
+            {step===0 && <>
+              <h2 style={{fontFamily:'Spectral,serif',fontSize:26,fontWeight:600,color:'#23201C',marginBottom:6}}>Create your account</h2>
+              <p style={{fontSize:13.5,color:'#8A8170',marginBottom:24}}>Join thousands of barns already using StableOS.</p>
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <Inp label="Email address" placeholder="you@yourstable.com" type="email" value={data.email} onChange={v=>upd('email',v)} />
+                <Inp label="Password" placeholder="Choose a secure password" type="password" value={data.pw} onChange={v=>upd('pw',v)} />
+                <Inp label="Confirm password" placeholder="Repeat your password" type="password" />
+                <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:'#FBF6EC',border:'1px solid #E4D9C0',borderRadius:10,fontSize:12.5,color:'#5a5345'}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9c7026" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+                  Your 14-day free trial starts automatically. No credit card required.
+                </div>
+              </div>
+            </>}
+
+            {/* STEP 1 — Barn info */}
+            {step===1 && <>
+              <h2 style={{fontFamily:'Spectral,serif',fontSize:26,fontWeight:600,color:'#23201C',marginBottom:6}}>Tell us about your barn</h2>
+              <p style={{fontSize:13.5,color:'#8A8170',marginBottom:24}}>We'll use this to set up your workspace and invoices.</p>
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <Inp label="Barn / stable name" placeholder="e.g. The Winners Stable" value={data.barnName} onChange={v=>upd('barnName',v)} />
+                <Sel label="Facility type" options={['Boarding facility','Breeding farm','Training center','Riding school','Private stable','Other']} value={data.barnType} onChange={v=>upd('barnType',v)} />
+                <Inp label="Address" placeholder="123 Ranch Road, Georgetown, TX 78626" value={data.address} onChange={v=>upd('address',v)} />
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <Inp label="Phone" placeholder="(512) 555-0100" value={data.phone} onChange={v=>upd('phone',v)} />
+                  <Inp label="Website (optional)" placeholder="www.yourstable.com" />
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <Inp label="Number of horses" placeholder="e.g. 18" />
+                  <Inp label="Number of stalls" placeholder="e.g. 8" />
+                </div>
+              </div>
+            </>}
+
+            {/* STEP 2 — Logo */}
+            {step===2 && <>
+              <h2 style={{fontFamily:'Spectral,serif',fontSize:26,fontWeight:600,color:'#23201C',marginBottom:6}}>Upload your logo</h2>
+              <p style={{fontSize:13.5,color:'#8A8170',marginBottom:24}}>Give your workspace a personal touch. You can change this any time.</p>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:18}}>
+                <div style={{width:160,height:160,borderRadius:24,background:'linear-gradient(150deg,#EBE2CF,#ddd3bc)',border:'2.5px dashed #cdbf9f',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10,cursor:'pointer'}}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cdbf9f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <div style={{fontSize:12,fontWeight:600,color:'#9a9081',textAlign:'center',lineHeight:1.4}}>Drop your logo<br/>or click to browse</div>
+                </div>
+                <div style={{fontSize:12,color:'#9a9081',textAlign:'center'}}>PNG or SVG recommended · Any size · Square or horizontal</div>
+                <div style={{height:1,width:'100%',background:'#F0E9D8'}}/>
+                <div style={{width:'100%',padding:'14px 16px',background:'#FBF6EC',border:'1px solid #E4D9C0',borderRadius:12,display:'flex',alignItems:'center',gap:12}}>
+                  <div style={{width:48,height:48,borderRadius:12,background:'linear-gradient(150deg,#1C3A2E,#15291F)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C99A4A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg>
+                  </div>
+                  <div>
+                    <div style={{fontSize:13.5,fontWeight:600,color:'#23201C'}}>{data.barnName||'Your Stable Name'}</div>
+                    <div style={{fontSize:11.5,color:'#8A8170',marginTop:2}}>Default logo — will be replaced by your upload</div>
+                  </div>
+                </div>
+              </div>
+            </>}
+
+            {/* STEP 3 — Plan */}
+            {step===3 && <>
+              <h2 style={{fontFamily:'Spectral,serif',fontSize:26,fontWeight:600,color:'#23201C',marginBottom:6}}>Choose your plan</h2>
+              <p style={{fontSize:13.5,color:'#8A8170',marginBottom:22}}>Start free for 14 days. Upgrade or cancel anytime.</p>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {PLANS.map(p => (
+                  <div key={p.name} onClick={()=>upd('plan',p.name)} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 16px',border:`2px solid ${data.plan===p.name?p.color:'#E8DFCC'}`,borderRadius:13,cursor:'pointer',background:data.plan===p.name?`${p.color}09`:'#fff',transition:'.18s'}}>
+                    <div style={{width:22,height:22,borderRadius:'50%',border:`2.5px solid ${data.plan===p.name?p.color:'#cdbf9f'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      {data.plan===p.name && <div style={{width:11,height:11,borderRadius:'50%',background:p.color}}/>}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontSize:14.5,fontWeight:700,color:'#23201C'}}>{p.name}</span>
+                        {p.hi && <span style={{fontSize:10,fontWeight:700,color:'#1C3A2E',background:'#C99A4A',padding:'2px 8px',borderRadius:20}}>Most popular</span>}
+                      </div>
+                      <div style={{fontSize:12.5,color:'#8A8170',marginTop:2}}>{p.horses} · {p.users}</div>
+                    </div>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:22,fontWeight:700,color:p.color}}>{p.price}<span style={{fontSize:12,fontWeight:400,color:'#9a9081'}}>/mo</span></div>
+                  </div>
+                ))}
+              </div>
+            </>}
+
+            {/* STEP 4 — Staff */}
+            {step===4 && <>
+              <h2 style={{fontFamily:'Spectral,serif',fontSize:26,fontWeight:600,color:'#23201C',marginBottom:6}}>Invite your first staff member</h2>
+              <p style={{fontSize:13.5,color:'#8A8170',marginBottom:24}}>You can invite more people after setup. Skip if you're starting solo.</p>
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <Inp label="Full name" placeholder="e.g. Sam Okafor" value={data.staffName} onChange={v=>upd('staffName',v)} />
+                <Inp label="Email address" placeholder="sam@yourstable.com" type="email" value={data.staffEmail} onChange={v=>upd('staffEmail',v)} />
+                <Sel label="Role" options={['Stable Owner','Manager','Staff / Groom','Trainer','Boarder / Client']} value={data.staffRole} onChange={v=>upd('staffRole',v)} />
+                <div style={{padding:'12px 14px',background:'#FBF0D8',border:'1px solid #e6d3a4',borderRadius:10,fontSize:12.5,color:'#7a5200',display:'flex',alignItems:'center',gap:8}}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 6 12 13 2 6"/><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+                  An invitation email will be sent to this address when you launch.
+                </div>
+              </div>
+              <button onClick={()=>setStep(5)} style={{marginTop:16,background:'none',border:'none',fontSize:13,color:'#9a9081',cursor:'pointer',fontFamily:'inherit',padding:0}}>Skip — I'll add staff later →</button>
+            </>}
+
+            {/* STEP 5 — All set */}
+            {step===5 && <>
+              <div style={{textAlign:'center',padding:'12px 0 8px'}}>
+                <div style={{width:72,height:72,borderRadius:'50%',background:'#E5F0E7',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3C7A57" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </div>
+                <h2 style={{fontFamily:'Spectral,serif',fontSize:28,fontWeight:600,color:'#23201C',marginBottom:8}}>You're all set, {data.barnName||'welcome'}!</h2>
+                <p style={{fontSize:14,color:'#8A8170',lineHeight:1.6,marginBottom:28}}>Your StableOS workspace is ready. We've created your company account, default settings, and a sample dataset to get you started.</p>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:28,textAlign:'left'}}>
+                  {[['✓ Company workspace','Created and configured'],['✓ Default settings','Stalls, paddocks, arenas'],['✓ Admin account','Full manager access']].map(([t,s]) => (
+                    <div key={t} style={{background:'#F2F5EE',border:'1px solid #DDE7D5',borderRadius:11,padding:'11px 13px'}}>
+                      <div style={{fontSize:12,fontWeight:700,color:'#3C7A57',marginBottom:3}}>{t}</div>
+                      <div style={{fontSize:11.5,color:'#8A8170'}}>{s}</div>
+                    </div>
+                  ))}
+                </div>
+                <Btn variant="primary" fullWidth onClick={()=>{
+              // The tenant + owner were created during finishSetup and the owner
+              // is already signed in — just open the workspace.
+              window.location.href='app.html';
+            }}>Launch my workspace →</Btn>
+                <p style={{fontSize:12,color:'#9a9081',marginTop:12}}>Your 14-day free trial is active · Plan: {data.plan}</p>
+              </div>
+            </>}
+
+            {/* Nav buttons */}
+            {step < 5 && (
+              <div style={{display:'flex',gap:10,marginTop:28,paddingTop:22,borderTop:'1px solid #F0E9D8'}}>
+                {step > 0 && <Btn variant="secondary" onClick={()=>setStep(s=>s-1)}>← Back</Btn>}
+                <div style={{flex:1}}/>
+                <Btn variant="primary" disabled={submitting} onClick={()=> step===4 ? finishSetup() : setStep(s=>Math.min(s+1,5))}>
+                  {step===4 ? (submitting ? 'Creating account…' : 'Finish setup') : 'Continue →'}
+                </Btn>
+              </div>
+            )}
+          </div>
+
+          {step < 5 && <p style={{textAlign:'center',fontSize:12,color:'#9a9081',marginTop:16}}>Step {step+1} of {STEPS.length} · Your progress is saved automatically</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

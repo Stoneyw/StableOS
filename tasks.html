@@ -1,0 +1,191 @@
+<!-- @dsCard group="StableOS" viewport="1440x900" name="Daily Tasks" subtitle="Barn chore checklist with progress tracking, assignees, time slots, and task editing" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StableOS — Daily Tasks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#EBE2CF;-webkit-font-smoothing:antialiased;height:100vh;overflow:hidden}
+a{text-decoration:none;color:inherit}
+::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#cdbf9f;border-radius:8px;border:2.5px solid transparent;background-clip:content-box}
+</style>
+</head>
+<body><div id="root" style="height:100vh"></div>
+<script type="text/babel">
+const DS = window.StableOSDesignSystem_8c3955 || {};
+
+const PALETTE = ['#3C7A57','#9c7026','#7A4A2B','#5a6b8c','#a05a4a'];
+const hc = n => { let h=0; for(const c of (n||'')) h=(h*31+c.charCodeAt(0))>>>0; return PALETTE[h%PALETTE.length]; };
+const ini = n => (n||'').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+
+const AREA_DOT = {Barn:'#7A4A2B','Covered Arena':'#5a6b8c',Paddocks:'#3C7A57','All areas':'#9c7026','Hay room':'#C99A4A','Round pens':'#B4502E','Other':'#9a9081'};
+
+const TASKS_INIT = [
+  {id:'t1', title:'Morning feed — AM round',     area:'Barn',           time:'6:00 AM',  assignee:'Laine',  done:true},
+  {id:'t2', title:'Turn out paddock horses',     area:'Paddocks',       time:'7:00 AM',  assignee:'Laine',  done:true},
+  {id:'t3', title:'Muck stalls 1–8',             area:'Barn',           time:'7:30 AM',  assignee:'Laine',  done:true},
+  {id:'t4', title:'Refill & scrub water troughs',area:'All areas',      time:'10:00 AM', assignee:'Laine',  done:false},
+  {id:'t5', title:'Arena drag + footing check',  area:'Covered Arena',  time:'11:30 AM', assignee:'Laine',  done:false},
+  {id:'t6', title:'Check feed supply inventory', area:'Hay room',       time:'1:00 PM',  assignee:'Laine',  done:false},
+  {id:'t7', title:'Evening feed — PM round',     area:'Barn',           time:'5:00 PM',  assignee:'Stoney', done:false},
+  {id:'t8', title:'Bring horses in / check paddocks', area:'Paddocks',  time:'6:00 PM',  assignee:'Stoney', done:false},
+  {id:'t9', title:'Night check + stall lock-up', area:'Barn',           time:'9:00 PM',  assignee:'Stoney', done:false},
+];
+
+const NAV = [
+  {href:'app.html',      id:'dashboard',label:'Dashboard'},
+  {href:'app.html',      id:'horses',   label:'Horses'},
+  {href:'boarders.html', id:'boarders', label:'Boarders'},
+  {href:'app.html',      id:'feeding',  label:'Feeding Board'},
+  {href:'tasks.html',    id:'tasks',    label:'Daily Tasks', badge:'6', active:true},
+  {href:'medical.html',  id:'medical',  label:'Medical Records'},
+  {href:'calendar.html', id:'calendar', label:'Arena Calendar'},
+  {href:'facility.html', id:'facility', label:'Facility Map'},
+  {href:'messages.html', id:'messages', label:'Messages', badge:'2'},
+  {href:'billing.html',  id:'billing',  label:'Billing'},
+  {href:'reports.html',  id:'reports',  label:'Reports'},
+];
+const ICONS = {dashboard:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>',horses:'<path d="M5 21V9l4-3 3 2.5h3a3 3 0 0 1 3 3V21"/><path d="M5 13h6"/><path d="M9 21v-5"/>',boarders:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/>',feeding:'<path d="M5 8h14l-1.4 11.2a2 2 0 0 1-2 1.8H8.4a2 2 0 0 1-2-1.8Z"/><path d="M5 8l1-3.5h12L19 8"/>',tasks:'<path d="M9 11l2 2 4-4"/><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M8 3v3M16 3v3"/>',medical:'<path d="M3 12h4l2-5 3 10 2-7 2 2h5"/>',calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',facility:'<path d="m9 4 6 2 5-2v14l-5 2-6-2-5 2V6Z"/>',messages:'<path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1Z"/>',billing:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',reports:'<path d="M3 12h4l2-5 3 10 2-7 2 2h5"/>'};
+
+function Sidebar() {
+  return (
+    <aside style={{width:248,flexShrink:0,background:'linear-gradient(180deg,#1C3A2E,#15291F)',color:'#E9E2D0',display:'flex',flexDirection:'column'}}>
+      <div style={{padding:'20px 18px 14px',display:'flex',alignItems:'center',gap:11,borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+        <div style={{width:38,height:38,borderRadius:10,background:'linear-gradient(150deg,#C99A4A,#9c7026)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C3A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg></div>
+        <div><div style={{fontFamily:'Spectral,serif',fontWeight:700,fontSize:15,lineHeight:1}}>The Winners Stable</div><div style={{fontSize:10.5,color:'#9DBCA8',letterSpacing:1.3,textTransform:'uppercase',marginTop:4}}>Georgetown, TX</div></div>
+      </div>
+      <nav style={{flex:1,overflowY:'auto',padding:'14px 10px',display:'flex',flexDirection:'column',gap:3}}>
+        {NAV.map(n=><a key={n.id} href={n.href} style={{display:'flex',alignItems:'center',gap:11,borderRadius:10,padding:'10px 12px',fontSize:13.5,fontWeight:n.active?600:500,background:n.active?'rgba(201,154,74,.16)':'transparent',color:n.active?'#F3E7CB':'#BBD0C2',boxShadow:n.active?'inset 3px 0 0 #C99A4A':'none',textDecoration:'none',transition:'.15s'}}>
+          <span style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:ICONS[n.id]||''}}/></span>
+          <span style={{flex:1}}>{n.label}</span>
+          {n.badge&&<span style={{background:'#B4502E',color:'#fff',fontSize:10.5,fontWeight:700,minWidth:18,height:18,padding:'0 5px',borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center'}}>{n.badge}</span>}
+        </a>)}
+      </nav>
+      <div style={{padding:'12px 14px',borderTop:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:10}}>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(150deg,#3C7A57,#2a5b3e)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,color:'#fff',flexShrink:0}}>CE</div>
+        <div style={{flex:1,minWidth:0}}><div style={{fontSize:13.5,fontWeight:600}}>Chris & Eileen</div><div style={{fontSize:11.5,color:'#9DBCA8'}}>Manager</div></div>
+      </div>
+    </aside>
+  );
+}
+
+function App() {
+  const [tasks, setTasks] = React.useState(TASKS_INIT);
+  const [editing, setEditing] = React.useState(null);
+  const [draft,   setDraft]   = React.useState({});
+
+  const tog = id => setTasks(ts => ts.map(t => t.id===id?{...t,done:!t.done}:t));
+  const done = tasks.filter(t=>t.done).length;
+  const pct = Math.round(done/tasks.length*100);
+
+  const openEdit = (t) => { setEditing(t); setDraft({...t}); };
+  const saveEdit = () => { setTasks(ts=>ts.map(t=>t.id===draft.id?{...draft}:t)); setEditing(null); };
+  const addTask  = () => { const id='t_'+Date.now(); setEditing({id,title:'',area:'Barn',time:'',assignee:'Laine',done:false,isNew:true}); setDraft({id,title:'',area:'Barn',time:'',assignee:'Laine',done:false}); };
+  const deleteTask = () => { setTasks(ts=>ts.filter(t=>t.id!==draft.id)); setEditing(null); };
+
+  return (
+    <div style={{display:'flex',height:'100vh',overflow:'hidden',background:'#EBE2CF'}}>
+      <Sidebar/>
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}>
+        <header style={{height:68,flexShrink:0,background:'rgba(247,242,231,.88)',backdropFilter:'blur(8px)',borderBottom:'1px solid #E0D5BC',display:'flex',alignItems:'center',gap:16,padding:'0 26px'}}>
+          <div style={{flex:1}}><div style={{fontFamily:'Spectral,serif',fontSize:22,fontWeight:600,color:'#23201C'}}>Daily Tasks</div><div style={{fontSize:12,color:'#8A8170',marginTop:2}}>Thursday, June 11 · {done}/{tasks.length} complete</div></div>
+          <button onClick={addTask} style={{display:'flex',alignItems:'center',gap:7,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:10,padding:'10px 16px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 4px 12px rgba(28,58,46,.25)'}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Add task
+          </button>
+        </header>
+
+        <main style={{flex:1,overflowY:'auto',padding:'22px 26px 48px'}}>
+          <div style={{maxWidth:860,margin:'0 auto'}}>
+            <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+              {/* Header */}
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px 8px'}}>
+                <div>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:20,fontWeight:600,color:'#23201C'}}>Today · Thursday, June 11</div>
+                  <div style={{fontSize:13,color:'#8A8170',marginTop:2}}>{done} of {tasks.length} complete</div>
+                </div>
+                <div style={{fontFamily:'Spectral,serif',fontSize:34,fontWeight:600,color:'#3C7A57'}}>{pct}%</div>
+              </div>
+              {/* Progress bar */}
+              <div style={{padding:'8px 24px 6px'}}>
+                <div style={{height:8,background:'#EDE5D2',borderRadius:6,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:pct+'%',background:'linear-gradient(90deg,#3C7A57,#5a9b71)',borderRadius:6,transition:'width .3s'}}/>
+                </div>
+              </div>
+              {/* Task list */}
+              <div style={{padding:'10px 14px 16px'}}>
+                {tasks.map((t,idx) => (
+                  <div key={t.id} style={{display:'flex',alignItems:'center',gap:14,padding:'12px 10px',borderRadius:12,cursor:'pointer',borderBottom:'1px solid #F4EEDE'}}>
+                    <div onClick={()=>tog(t.id)} style={{width:23,height:23,borderRadius:7,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',border:`2px solid ${t.done?'#3C7A57':'#cfc3a8'}`,background:t.done?'#3C7A57':'#fff',transition:'.15s',cursor:'pointer'}}>
+                      {t.done && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
+                    </div>
+                    <div style={{width:62,flexShrink:0,fontSize:12.5,fontWeight:700,color:'#7c7363'}}>{t.time}</div>
+                    <div style={{flex:1,minWidth:0}} onClick={()=>tog(t.id)}>
+                      <div style={{fontSize:15,fontWeight:600,color:t.done?'#a9a08f':'#2f2a23',textDecoration:t.done?'line-through':'none'}}>{t.title}</div>
+                      <div style={{display:'flex',alignItems:'center',gap:7,marginTop:3}}>
+                        <span style={{width:7,height:7,borderRadius:'50%',background:AREA_DOT[t.area]||'#9c7026'}}/>
+                        <span style={{fontSize:12,color:'#9a9081'}}>{t.area}</span>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:12.5,color:'#7c7363',fontWeight:500}}>{t.assignee}</span>
+                      <div title={t.assignee} style={{width:29,height:29,borderRadius:'50%',background:hc(t.assignee),color:'#fff',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{ini(t.assignee)}</div>
+                      <button onClick={()=>openEdit(t)} style={{width:28,height:28,borderRadius:7,border:'1px solid #E4D9C0',background:'#FBF6EC',color:'#9c7026',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button onClick={addTask} style={{display:'flex',alignItems:'center',gap:8,width:'100%',justifyContent:'center',marginTop:12,background:'#FBF6EC',border:'2px dashed #d8c9a6',color:'#7c7363',fontSize:13.5,fontWeight:600,padding:13,borderRadius:12,cursor:'pointer',fontFamily:'inherit'}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9c7026" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Add a task
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* Task edit modal */}
+      {editing && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:400,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={()=>setEditing(null)}>
+          <div style={{background:'#fff',borderRadius:18,padding:26,width:'100%',maxWidth:440,boxShadow:'0 24px 60px rgba(0,0,0,.3)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
+              <div style={{fontFamily:'Spectral,serif',fontSize:20,fontWeight:600,color:'#23201C',flex:1}}>{editing.isNew?'Add task':'Edit task'}</div>
+              {!editing.isNew && <button onClick={deleteTask} style={{padding:'7px 13px',background:'#FBEAE2',color:'#B4502E',border:'none',borderRadius:8,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete</button>}
+              <button onClick={()=>setEditing(null)} style={{width:32,height:32,borderRadius:8,border:'1px solid #E4D9C0',background:'#FBF6EC',color:'#5a5345',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontFamily:'inherit'}}>×</button>
+            </div>
+            {[['Task title','title','text'],['Time','time','text']].map(([l,k,t])=>(
+              <div key={k} style={{marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{l}</div>
+                <input type={t} value={draft[k]||''} onChange={e=>setDraft(d=>({...d,[k]:e.target.value}))} style={{width:'100%',padding:'10px 12px',border:'1.5px solid #C99A4A',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#FFFDF7',color:'#2f2a23'}}/>
+              </div>
+            ))}
+            {[['Area','area',Object.keys(AREA_DOT)],['Assign to','assignee',['Laine','Stoney','Chris & Eileen','Other']]].map(([l,k,opts])=>(
+              <div key={k} style={{marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{l}</div>
+                <select value={draft[k]||''} onChange={e=>setDraft(d=>({...d,[k]:e.target.value}))} style={{width:'100%',padding:'10px 12px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                  {opts.map(o=><option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            ))}
+            <div style={{display:'flex',gap:10,marginTop:22}}>
+              <button onClick={saveEdit} style={{flex:1,padding:12,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:11,fontFamily:'inherit',fontSize:14,fontWeight:600,cursor:'pointer'}}>{editing.isNew?'Add task':'Save changes'}</button>
+              <button onClick={()=>setEditing(null)} style={{padding:'12px 18px',background:'#FBF6EC',color:'#5a5345',border:'1px solid #E4D9C0',borderRadius:11,fontFamily:'inherit',fontSize:14,cursor:'pointer'}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

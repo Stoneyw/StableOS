@@ -1,0 +1,668 @@
+<!-- @dsCard group="StableOS" viewport="1440x900" name="Super Admin" subtitle="Platform owner login and company management dashboard" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StableOS — Super Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="./js/db.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#EBE2CF;-webkit-font-smoothing:antialiased;height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#cdbf9f;border-radius:8px;border:2.5px solid transparent;background-clip:content-box}
+input,select,textarea{font-family:inherit}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="root" style="height:100vh"></div>
+<script type="text/babel">
+
+// ─── Data ──────────────────────────────────────────────────────────────────
+const SUPER_ADMIN = { email:'stoneyw@gmail.com', password:'StableOS123', name:'Stoney W.' };
+const PLAN_MRR = { Basic:99, Professional:199, Enterprise:399 };
+
+const INIT_COMPANIES = [
+  {id:1,name:'The Winners Stable',    slug:'winners-stable',    loc:'Georgetown, TX',   plan:'Professional',horses:18,users:4,  status:'active',   joined:'Jan 2024',owner:'Chris & Eileen',ownerEmail:'chris@thewinnersstable.com'},
+  {id:2,name:'Blue Creek Ranch',      slug:'blue-creek-ranch',  loc:'Austin, TX',       plan:'Enterprise',  horses:87,users:12, status:'active',   joined:'Mar 2024',owner:'Margaret Dunn',  ownerEmail:'margaret@bluecreekranch.com'},
+  {id:3,name:'Hill Country Equine',   slug:'hill-country',      loc:'Dripping Springs', plan:'Professional',horses:34,users:6,  status:'active',   joined:'May 2024',owner:'Tom Bradley',    ownerEmail:'tom@hillcountryequine.com'},
+  {id:4,name:'Southern Oaks Boarding',slug:'southern-oaks',     loc:'Brenham, TX',      plan:'Basic',       horses:22,users:3,  status:'active',   joined:'Jun 2024',owner:'Linda Ashford',  ownerEmail:'linda@southernoaks.com'},
+  {id:5,name:'Lone Star Stables',     slug:'lone-star',         loc:'Round Rock, TX',   plan:'Professional',horses:41,users:8,  status:'trial',    joined:'Jun 2026',owner:'Sam Rivera',     ownerEmail:'sam@lonestarlstables.com'},
+  {id:6,name:'Bluebonnet Farms',      slug:'bluebonnet',        loc:'Fredericksburg, TX',plan:'Basic',      horses:11,users:2,  status:'suspended',joined:'Feb 2024',owner:'Pat Owens',      ownerEmail:'pat@bluebonnetfarms.com'},
+  {id:7,name:'Cedar Ridge Equestrian',slug:'cedar-ridge',       loc:'Waco, TX',         plan:'Enterprise',  horses:124,users:19,status:'active',   joined:'Nov 2023',owner:'Jill Carver',    ownerEmail:'jill@cedarridgeequestrian.com'},
+];
+
+const SUPPORT_TICKETS = [
+  {id:101,company:'Blue Creek Ranch',    subject:'Invoice PDF won\'t generate',     priority:'high',  status:'open',   created:'Jun 12',assignee:'—'},
+  {id:102,company:'Lone Star Stables',   subject:'Trial extension request — 7 days',priority:'normal',status:'open',   created:'Jun 13',assignee:'Stoney W.'},
+  {id:103,company:'Bluebonnet Farms',    subject:'Request to reactivate account',   priority:'normal',status:'open',   created:'Jun 11',assignee:'—'},
+  {id:104,company:'Hill Country Equine', subject:'Can\'t add more than 30 horses',  priority:'normal',status:'resolved',created:'Jun 10',assignee:'Stoney W.'},
+  {id:105,company:'Southern Oaks',       subject:'Feeding board not saving PM data', priority:'high', status:'open',   created:'Jun 13',assignee:'—'},
+  {id:106,company:'Cedar Ridge',         subject:'Arena calendar timezone wrong',   priority:'low',   status:'resolved',created:'Jun 9', assignee:'Stoney W.'},
+];
+
+const ANALYTICS_MONTHS = [
+  {m:'Jan',mrr:697, companies:4,horses:156,churn:0},
+  {m:'Feb',mrr:796, companies:5,horses:190,churn:0},
+  {m:'Mar',mrr:995, companies:6,horses:224,churn:0},
+  {m:'Apr',mrr:1095,companies:6,horses:265,churn:0},
+  {m:'May',mrr:1194,companies:7,horses:312,churn:1},
+  {m:'Jun',mrr:0,   companies:7,horses:337,churn:0}, // current — filled below
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+const planStyle  = p => ({Basic:{color:'#5a5345',background:'#F1EADA',border:'1px solid #E4D9C0'},Professional:{color:'#2A6FDB',background:'#EBF4FF',border:'1px solid #B8D4F5'},Enterprise:{color:'#F1EBDB',background:'#1C3A2E',border:'none'}}[p]||{});
+const statusStyle= s => ({active:{color:'#3C7A57',background:'#E5F0E7',border:'1px solid #c4dcc9'},trial:{color:'#9c7026',background:'#F6ECD2',border:'1px solid #e6d3a4'},suspended:{color:'#B4502E',background:'#FBEAE2',border:'1px solid #F0B8A0'}}[s]||{});
+const statusDot  = s => ({active:'#3C7A57',trial:'#C99A4A',suspended:'#B4502E'})[s]||'#9a9081';
+const pLabel     = s => ({active:'Active',trial:'Trial',suspended:'Suspended'})[s]||s;
+
+function Pill({label,style}){
+  return <span style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,whiteSpace:'nowrap',...style}}>
+    <span style={{width:6,height:6,borderRadius:'50%',background:style.color,flexShrink:0}}/>
+    {label}
+  </span>;
+}
+function Overlay({onClose,children}){
+  return <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+    <div onClick={e=>e.stopPropagation()} style={{animation:'fadeIn .2s ease'}}>{children}</div>
+  </div>;
+}
+function ModalCard({title,width=480,onClose,children,footer}){
+  return <div style={{background:'#fff',borderRadius:18,padding:'26px',width:'100%',maxWidth:width,boxShadow:'0 24px 60px rgba(0,0,0,.35)',maxHeight:'88vh',overflowY:'auto'}}>
+    <div style={{display:'flex',alignItems:'center',marginBottom:20}}>
+      <div style={{fontFamily:'Spectral,serif',fontSize:20,fontWeight:600,color:'#23201C',flex:1}}>{title}</div>
+      {onClose&&<button onClick={onClose} style={{width:30,height:30,borderRadius:8,border:'1px solid #E4D9C0',background:'#FBF6EC',color:'#5a5345',fontSize:17,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontFamily:'inherit'}}>×</button>}
+    </div>
+    {children}
+    {footer&&<div style={{marginTop:20,paddingTop:16,borderTop:'1px solid #F0E9D8',display:'flex',gap:10,justifyContent:'flex-end'}}>{footer}</div>}
+  </div>;
+}
+function Btn({variant='primary',onClick,children,disabled,small}){
+  const v={primary:{background:'#1C3A2E',color:'#F1EBDB',border:'none',boxShadow:'0 3px 10px rgba(28,58,46,.25)'},secondary:{background:'#FBF6EC',color:'#5a5345',border:'1px solid #E4D9C0'},danger:{background:'#B4502E',color:'#fff',border:'none'},amber:{background:'#C99A4A',color:'#1C3A2E',border:'none'}}[variant]||{};
+  return <button onClick={onClick} disabled={disabled} style={{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:7,padding:small?'7px 14px':'10px 18px',fontSize:small?12.5:13.5,fontWeight:600,borderRadius:10,cursor:disabled?'not-allowed':'pointer',opacity:disabled?.6:1,fontFamily:'inherit',transition:'opacity .15s',...v}}>{children}</button>;
+}
+function InpField({label,value,onChange,type='text',placeholder}){
+  const [f,setF]=React.useState(false);
+  return <div style={{display:'flex',flexDirection:'column',gap:4}}>
+    {label&&<label style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5}}>{label}</label>}
+    <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+      onFocus={()=>setF(true)} onBlur={()=>setF(false)}
+      style={{width:'100%',padding:'10px 13px',border:`1.5px solid ${f?'#C99A4A':'#E4D9C0'}`,borderRadius:9,fontSize:14,outline:'none',background:'#FFFDF7',color:'#2f2a23',transition:'border-color .15s'}}/>
+  </div>;
+}
+function SelField({label,value,onChange,options}){
+  return <div style={{display:'flex',flexDirection:'column',gap:4}}>
+    {label&&<label style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5}}>{label}</label>}
+    <select value={value} onChange={e=>onChange(e.target.value)}
+      style={{width:'100%',padding:'10px 13px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,outline:'none',background:`#FFFDF7 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9081' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center`,color:'#2f2a23',appearance:'none',paddingRight:32,cursor:'pointer'}}>
+      {options.map(o=><option key={o} value={o}>{o}</option>)}
+    </select>
+  </div>;
+}
+
+// ─── Login ─────────────────────────────────────────────────────────────────
+function LoginScreen({onLogin}){
+  const [email,setEmail]=React.useState('');
+  const [pw,setPw]=React.useState('');
+  const [err,setErr]=React.useState('');
+  const [loading,setLoading]=React.useState(false);
+  const [showPw,setShowPw]=React.useState(false);
+  const [ef,setEf]=React.useState(false);
+  const [pf,setPf]=React.useState(false);
+
+  const iS=f=>({width:'100%',padding:'12px 14px',borderRadius:10,fontSize:14,fontFamily:'inherit',outline:'none',background:'#FFFDF7',color:'#2f2a23',transition:'border-color .15s',border:`1.5px solid ${f?'#C99A4A':'#E4D9C0'}`});
+
+  const submit=e=>{
+    e.preventDefault();
+    if(!email||!pw){setErr('Enter your email and password.');return;}
+    setLoading(true);setErr('');
+    setTimeout(()=>{
+      setLoading(false);
+      const a=window.DB.platformLogin(email,pw);
+      if(a) onLogin(a);
+      else setErr('Invalid email or password.');
+    },900);
+  };
+
+  return(
+    <div style={{height:'100vh',background:'#EBE2CF',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{position:'fixed',inset:0,background:'linear-gradient(160deg,rgba(28,58,46,.06) 0%,transparent 60%)',pointerEvents:'none'}}/>
+      <div style={{width:'100%',maxWidth:420,position:'relative'}}>
+        <div style={{textAlign:'center',marginBottom:32}}>
+          <div style={{width:56,height:56,borderRadius:15,background:'linear-gradient(150deg,#1C3A2E,#15291F)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',boxShadow:'0 8px 24px rgba(28,58,46,.3)'}}>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#C99A4A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg>
+          </div>
+          <div style={{fontFamily:'Spectral,serif',fontSize:26,fontWeight:700,color:'#1C3A2E'}}>StableOS</div>
+          <div style={{fontSize:11,color:'#9a9081',marginTop:4,fontWeight:700,letterSpacing:1.4,textTransform:'uppercase'}}>Super Admin Portal</div>
+        </div>
+        <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:20,padding:'32px',boxShadow:'0 4px 16px rgba(40,30,15,.08)'}}>
+          <h2 style={{fontFamily:'Spectral,serif',fontSize:22,fontWeight:600,color:'#23201C',marginBottom:4}}>Sign in</h2>
+          <p style={{fontSize:13.5,color:'#8A8170',marginBottom:24}}>Platform owner access only.</p>
+          {err&&<div style={{display:'flex',alignItems:'center',gap:9,padding:'11px 14px',background:'#FBEAE2',border:'1px solid #F0B8A0',borderRadius:10,marginBottom:18,fontSize:13.5,color:'#B4502E',fontWeight:500}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>{err}
+          </div>}
+          <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div>
+              <label style={{display:'block',fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:5}}>Email</label>
+              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="stoneyw@gmail.com" autoComplete="email"
+                onFocus={()=>setEf(true)} onBlur={()=>setEf(false)} style={iS(ef)}/>
+            </div>
+            <div>
+              <div style={{display:'flex',alignItems:'center',marginBottom:5}}>
+                <label style={{flex:1,fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5}}>Password</label>
+                <button type="button" onClick={()=>setShowPw(v=>!v)} style={{fontSize:12,color:'#9c7026',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>{showPw?'Hide':'Show'}</button>
+              </div>
+              <input type={showPw?'text':'password'} value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" autoComplete="current-password"
+                onFocus={()=>setPf(true)} onBlur={()=>setPf(false)} style={iS(pf)}/>
+            </div>
+            <button type="submit" disabled={loading} style={{width:'100%',padding:'13px',background:loading?'#3a6652':'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:12,fontFamily:'inherit',fontSize:14.5,fontWeight:700,cursor:loading?'not-allowed':'pointer',boxShadow:'0 4px 14px rgba(28,58,46,.3)',display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginTop:4}}>
+              {loading&&<div style={{width:17,height:17,borderRadius:'50%',border:'2.5px solid rgba(255,255,255,.3)',borderTopColor:'#F1EBDB',animation:'spin .7s linear infinite'}}/>}
+              {loading?'Signing in…':'Sign in to Super Admin'}
+            </button>
+          </form>
+          <div style={{marginTop:22,padding:'13px 15px',background:'#FBF0D8',border:'1px solid #e6d3a4',borderRadius:12}}>
+            <div style={{fontSize:10.5,fontWeight:700,color:'#9c7026',textTransform:'uppercase',letterSpacing:.6,marginBottom:5}}>Demo credentials</div>
+            <div style={{fontSize:12.5,color:'#7a5200',display:'flex',flexDirection:'column',gap:2}}>
+              <div><b>Email:</b> stoneyw@gmail.com</div>
+              <div><b>Password:</b> StableOS123</div>
+            </div>
+          </div>
+        </div>
+        <p style={{textAlign:'center',fontSize:12,color:'#9a9081',marginTop:16}}>
+          Not a platform admin? <a href="landing.html" style={{color:'#3C7A57',fontWeight:600}}>Back to StableOS →</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Dashboard ─────────────────────────────────────────────────────────────
+function Dashboard({user,onLogout}){
+  const [companies,setCompanies]=React.useState(()=>window.DB.adminGetCompanies());
+  const [view,setView]=React.useState('companies');
+  const [search,setSearch]=React.useState('');
+  const [selected,setSelected]=React.useState(null);
+  const [modal,setModal]=React.useState(null); // {type, company?}
+  const [tickets,setTickets]=React.useState(SUPPORT_TICKETS);
+  const [addForm,setAddForm]=React.useState({name:'',owner:'',email:'',loc:'',plan:'Professional',facilityType:'Boarding facility'});
+  const [planForm,setPlanForm]=React.useState('Professional');
+  const [impersonating,setImpersonating]=React.useState(false);
+
+  const totalMRR=React.useMemo(()=>companies.filter(c=>c.status==='active').reduce((s,c)=>s+PLAN_MRR[c.plan],0),[companies]);
+  const analyticsData=[...ANALYTICS_MONTHS.slice(0,5),{...ANALYTICS_MONTHS[5],mrr:totalMRR}];
+  const maxRev=Math.max(...analyticsData.map(r=>r.v||r.mrr));
+
+  const closeModal=()=>{setModal(null);setImpersonating(false);};
+  const refresh=()=>setCompanies(window.DB.adminGetCompanies());
+
+  const doChangePlan=(c)=>{
+    window.DB.adminChangePlan(c.id,planForm);
+    refresh();
+    closeModal();
+  };
+  const doSuspend=(c)=>{
+    window.DB.adminSetStatus(c.id, c.status==='suspended'?'active':'suspended');
+    refresh();
+    closeModal();
+  };
+  const doAddCompany=()=>{
+    if(!addForm.name||!addForm.email)return;
+    window.DB.adminAddCompany(addForm);
+    refresh();
+    setAddForm({name:'',owner:'',email:'',loc:'',plan:'Professional',facilityType:'Boarding facility'});
+    closeModal();
+  };
+  const doImpersonate=(c)=>{
+    setImpersonating(true);
+    window.DB.adminImpersonate(c.id);
+    setTimeout(()=>{window.open('app.html','_blank');closeModal();},1500);
+  };
+  const doResolveTicket=(id)=>{
+    setTickets(ts=>ts.map(t=>t.id===id?{...t,status:'resolved',assignee:'Stoney W.'}:t));
+  };
+
+  const filtered=companies.filter(c=>!search||c.name.toLowerCase().includes(search.toLowerCase())||c.owner.toLowerCase().includes(search.toLowerCase()));
+
+  // ── Sidebar nav items
+  const NAV=[
+    {id:'companies',label:'Companies',badge:companies.length},
+    {id:'subscriptions',label:'Subscriptions',badge:null},
+    {id:'analytics',label:'Analytics',badge:null},
+    {id:'support',label:'Support',badge:tickets.filter(t=>t.status==='open').length},
+  ];
+
+  const topbarInfo={
+    companies:{title:'Companies',sub:`${companies.length} registered · ${companies.filter(c=>c.status==='active').length} active · $${totalMRR.toLocaleString()}/mo MRR`},
+    subscriptions:{title:'Subscriptions',sub:'Plan breakdown, billing events, upcoming renewals'},
+    analytics:{title:'Analytics',sub:'Growth, revenue, and platform health — June 2026'},
+    support:{title:'Support',sub:`${tickets.filter(t=>t.status==='open').length} open tickets`},
+  };
+
+  return(
+    <div style={{display:'flex',height:'100vh',overflow:'hidden',background:'#EBE2CF'}}>
+
+      {/* ── Sidebar ── */}
+      <aside style={{width:224,flexShrink:0,background:'linear-gradient(180deg,#182f26,#111f1a)',color:'#E9E2D0',display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'18px 16px 14px',borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+            <div style={{width:32,height:32,borderRadius:9,background:'linear-gradient(150deg,#C99A4A,#9c7026)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1C3A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg>
+            </div>
+            <div>
+              <div style={{fontFamily:'Spectral,serif',fontWeight:700,fontSize:14,lineHeight:1}}>StableOS</div>
+              <div style={{fontSize:9,color:'#C99A4A',letterSpacing:1.6,textTransform:'uppercase',marginTop:3,fontWeight:700}}>Super Admin</div>
+            </div>
+          </div>
+          <div style={{background:'rgba(201,154,74,.12)',border:'1px solid rgba(201,154,74,.2)',borderRadius:10,padding:'9px 12px',display:'flex',alignItems:'center',gap:9}}>
+            <div style={{width:32,height:32,borderRadius:'50%',background:'linear-gradient(150deg,#C99A4A,#9c7026)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:12,fontWeight:700,color:'#1C3A2E'}}>SW</div>
+            <div><div style={{fontSize:12.5,fontWeight:600,lineHeight:1.2}}>{user.name}</div><div style={{fontSize:10.5,color:'#9DBCA8',marginTop:2}}>{user.email}</div></div>
+          </div>
+        </div>
+        <nav style={{flex:1,padding:'12px 10px',display:'flex',flexDirection:'column',gap:2}}>
+          {NAV.map(({id,label,badge})=>(
+            <button key={id} onClick={()=>setView(id)} style={{display:'flex',alignItems:'center',gap:10,width:'100%',border:'none',cursor:'pointer',borderRadius:9,padding:'10px 12px',fontFamily:'inherit',fontSize:13,fontWeight:view===id?600:500,background:view===id?'rgba(201,154,74,.16)':'transparent',color:view===id?'#F3E7CB':'#BBD0C2',boxShadow:view===id?'inset 3px 0 0 #C99A4A':'none',transition:'.15s',textAlign:'left'}}>
+              <span style={{flex:1}}>{label}</span>
+              {badge!=null&&badge>0&&<span style={{background:view===id?'rgba(201,154,74,.3)':'rgba(255,255,255,.1)',color:view===id?'#F3E7CB':'#BBD0C2',fontSize:10,fontWeight:700,padding:'1px 7px',borderRadius:10,minWidth:20,textAlign:'center'}}>{badge}</span>}
+            </button>
+          ))}
+        </nav>
+        <div style={{padding:'12px 14px',borderTop:'1px solid rgba(255,255,255,.07)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#7FA089',marginBottom:8}}>
+            <div style={{width:7,height:7,borderRadius:'50%',background:'#3C7A57'}}/>All systems operational
+          </div>
+          <button onClick={onLogout} style={{fontSize:12.5,color:'#9DBCA8',background:'rgba(255,255,255,.07)',border:'none',borderRadius:8,padding:'7px 12px',cursor:'pointer',fontFamily:'inherit',fontWeight:600,width:'100%',textAlign:'left'}}>← Sign out</button>
+        </div>
+      </aside>
+
+      {/* ── Main ── */}
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}>
+
+        {/* Topbar */}
+        <header style={{height:65,flexShrink:0,background:'rgba(247,242,231,.92)',backdropFilter:'blur(8px)',borderBottom:'1px solid #E0D5BC',display:'flex',alignItems:'center',gap:16,padding:'0 24px'}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'Spectral,serif',fontSize:21,fontWeight:600,color:'#23201C'}}>{topbarInfo[view].title}</div>
+            <div style={{fontSize:12,color:'#8A8170',marginTop:1}}>{topbarInfo[view].sub}</div>
+          </div>
+          {view==='companies'&&<>
+            <div style={{display:'flex',alignItems:'center',gap:8,background:'#fff',border:'1px solid #E4D9C0',borderRadius:10,padding:'8px 13px',width:240}}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9a9081" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search companies…" style={{border:'none',outline:'none',fontSize:13.5,fontFamily:'inherit',background:'transparent',color:'#2f2a23',width:'100%'}}/>
+            </div>
+            <button onClick={()=>setModal({type:'add-company'})} style={{display:'flex',alignItems:'center',gap:7,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:10,padding:'9px 15px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 4px 12px rgba(28,58,46,.25)'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Add company
+            </button>
+          </>}
+        </header>
+
+        <main style={{flex:1,overflowY:'auto',padding:'20px 24px 48px',animation:'fadeIn .2s ease'}}>
+
+          {/* ════ COMPANIES VIEW ════ */}
+          {view==='companies'&&<>
+            {/* Stats strip */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:13,marginBottom:20}}>
+              {[
+                ['MRR','$'+totalMRR.toLocaleString(),'Active subscriptions','#3C7A57'],
+                ['Active',companies.filter(c=>c.status==='active').length,'Paying stables','#23201C'],
+                ['Horses',companies.reduce((s,c)=>s+c.horses,0),'Across all stables','#9c7026'],
+                ['Trial',companies.filter(c=>c.status==='trial').length,'In free trial','#C99A4A'],
+                ['Suspended',companies.filter(c=>c.status==='suspended').length,'Need attention','#B4502E'],
+              ].map(([l,v,s,c])=>(
+                <div key={l} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:14,padding:'15px 17px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{fontSize:11.5,fontWeight:600,color:'#8A8170',marginBottom:7}}>{l}</div>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:28,fontWeight:700,color:c,lineHeight:1}}>{v}</div>
+                  <div style={{fontSize:11.5,color:'#8A8170',marginTop:4}}>{s}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:18,alignItems:'start'}}>
+              {/* Table */}
+              <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,overflow:'hidden',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                <div style={{display:'grid',gridTemplateColumns:'2.2fr 1fr 1fr .8fr 1fr 100px',gap:10,padding:'11px 20px',background:'#FBF6EC',borderBottom:'1px solid #EFE6D0',fontSize:10.5,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.6,alignItems:'center'}}>
+                  <div>Company</div><div>Plan</div><div>Horses · Users</div><div>MRR</div><div>Status</div><div>Actions</div>
+                </div>
+                {filtered.length===0&&<div style={{padding:'28px',textAlign:'center',fontSize:13.5,color:'#9a9081',fontStyle:'italic'}}>No companies match your search.</div>}
+                {filtered.map((c)=>(
+                  <React.Fragment key={c.id}>
+                    <div onClick={()=>setSelected(selected===c.id?null:c.id)}
+                      style={{display:'grid',gridTemplateColumns:'2.2fr 1fr 1fr .8fr 1fr 100px',gap:10,padding:'13px 20px',borderBottom:'1px solid #F4EEDE',alignItems:'center',cursor:'pointer',background:selected===c.id?'#FBF6EC':'#fff',transition:'.12s'}}>
+                      <div>
+                        <div style={{fontSize:14,fontWeight:600,color:'#2f2a23'}}>{c.name}</div>
+                        <div style={{fontSize:11.5,color:'#8A8170',marginTop:1}}>{c.loc} · {c.owner}</div>
+                      </div>
+                      <span style={{display:'inline-block',fontSize:11.5,fontWeight:700,padding:'4px 10px',borderRadius:20,...planStyle(c.plan)}}>{c.plan}</span>
+                      <div style={{fontSize:13.5,color:'#5a5345'}}>{c.horses} · {c.users} users</div>
+                      <div style={{fontFamily:'Spectral,serif',fontSize:16,fontWeight:700,color:c.status==='active'?'#23201C':'#9a9081'}}>{c.status==='active'?`$${PLAN_MRR[c.plan]}`:'—'}</div>
+                      <Pill label={pLabel(c.status)} style={statusStyle(c.status)}/>
+                      <div style={{display:'flex',gap:5}}>
+                        <button onClick={e=>{e.stopPropagation();setSelected(c.id);}} style={{padding:'5px 10px',fontSize:11.5,fontWeight:600,color:'#3C7A57',background:'#E5F0E7',border:'none',borderRadius:7,cursor:'pointer',fontFamily:'inherit'}}>View</button>
+                        <button onClick={e=>{e.stopPropagation();setModal({type:'actions',company:c});}} style={{padding:'5px 9px',fontSize:13,fontWeight:700,color:'#9c7026',background:'#F6ECD2',border:'none',borderRadius:7,cursor:'pointer',fontFamily:'inherit'}}>···</button>
+                      </div>
+                    </div>
+                    {selected===c.id&&(
+                      <div style={{padding:'18px 20px',background:'#F9FBF7',borderBottom:'1px solid #EFE6D0',animation:'fadeIn .15s ease'}}>
+                        <div style={{display:'flex',gap:24,flexWrap:'wrap'}}>
+                          {/* Details grid */}
+                          <div style={{flex:1,minWidth:220}}>
+                            <div style={{fontSize:10,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.6,marginBottom:11}}>Account details</div>
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                              {[['Joined',c.joined],['Plan',c.plan],['Horses',c.horses],['Users',c.users],['MRR',c.status==='active'?`$${PLAN_MRR[c.plan]}/mo`:'—'],['Status',pLabel(c.status)],['Owner',c.owner],['Owner email',c.ownerEmail]].map(([k,v])=>(
+                                <div key={k}><div style={{fontSize:9.5,color:'#9a9081',fontWeight:700,textTransform:'uppercase',letterSpacing:.4}}>{k}</div><div style={{fontSize:13,fontWeight:600,color:'#23201C',marginTop:1}}>{v}</div></div>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Quick actions */}
+                          <div style={{display:'flex',flexDirection:'column',gap:8,minWidth:180}}>
+                            <div style={{fontSize:10,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.6,marginBottom:2}}>Quick actions</div>
+                            <button onClick={()=>setModal({type:'impersonate',company:c})} style={{padding:'9px 16px',background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',textAlign:'left'}}>
+                              Log in as owner →
+                            </button>
+                            <button onClick={()=>{setPlanForm(c.plan);setModal({type:'change-plan',company:c});}} style={{padding:'9px 16px',background:'#EBF4FF',color:'#2A6FDB',border:'1px solid #B8D4F5',borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',textAlign:'left'}}>
+                              Change plan
+                            </button>
+                            <button onClick={()=>setModal({type:'suspend',company:c})} style={{padding:'9px 16px',background:c.status==='suspended'?'#E5F0E7':'#FBEAE2',color:c.status==='suspended'?'#3C7A57':'#B4502E',border:`1px solid ${c.status==='suspended'?'#c4dcc9':'#F0B8A0'}`,borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',textAlign:'left'}}>
+                              {c.status==='suspended'?'Reactivate account':'Suspend account'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              {/* Right panel */}
+              <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                {/* MRR bar chart */}
+                <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'18px 20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C',marginBottom:14}}>Monthly revenue</div>
+                  <div style={{display:'flex',alignItems:'flex-end',gap:7,height:88}}>
+                    {analyticsData.map((r,i)=>{
+                      const h=Math.round((r.mrr||r.v||0)/maxRev*80);
+                      return <div key={r.m} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                        <div style={{width:'100%',background:i===5?'#1C3A2E':'#D4E8DC',borderRadius:'4px 4px 0 0',height:h,minHeight:4,transition:'height .3s'}}/>
+                        <div style={{fontSize:9.5,fontWeight:700,color:i===5?'#1C3A2E':'#9a9081'}}>{r.m}</div>
+                      </div>;
+                    })}
+                  </div>
+                  <div style={{marginTop:12,padding:'10px 13px',background:'#FBF6EC',border:'1px solid #EFE6D0',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                    <span style={{fontSize:12.5,fontWeight:600,color:'#5a5345'}}>June 2026</span>
+                    <span style={{fontFamily:'Spectral,serif',fontSize:20,fontWeight:700,color:'#3C7A57'}}>${totalMRR.toLocaleString()}</span>
+                  </div>
+                </div>
+                {/* Plan breakdown */}
+                <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'18px 20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C',marginBottom:14}}>Plan breakdown</div>
+                  {[['Basic','$99','#9a9081'],['Professional','$199','#2A6FDB'],['Enterprise','$399','#1C3A2E']].map(([p,pr,c])=>{
+                    const count=companies.filter(x=>x.plan===p).length;
+                    const pct=Math.round(count/companies.length*100);
+                    return <div key={p} style={{marginBottom:12}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:5}}>
+                        <div style={{width:9,height:9,borderRadius:3,background:c,flexShrink:0}}/>
+                        <span style={{flex:1,fontSize:13.5,fontWeight:600,color:'#2f2a23'}}>{p}</span>
+                        <span style={{fontSize:12,color:'#8A8170'}}>{count} stable{count!==1?'s':''}</span>
+                        <span style={{fontFamily:'Spectral,serif',fontSize:13,fontWeight:700,color:c}}>{pr}</span>
+                      </div>
+                      <div style={{height:5,background:'#F0E9D8',borderRadius:3,overflow:'hidden'}}>
+                        <div style={{height:'100%',width:`${pct}%`,background:c,borderRadius:3,transition:'width .4s'}}/>
+                      </div>
+                    </div>;
+                  })}
+                </div>
+                {/* Activity feed */}
+                <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'18px 20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C',marginBottom:14}}>Recent activity</div>
+                  {[
+                    {name:'Lone Star Stables',action:'Started 14-day trial',time:'2m ago',c:'#C99A4A'},
+                    {name:'Cedar Ridge',action:'Upgraded to Enterprise',time:'1h ago',c:'#3C7A57'},
+                    {name:'Blue Creek Ranch',action:'Added 3 new horses',time:'3h ago',c:'#3C7A57'},
+                    {name:'Bluebonnet Farms',action:'Payment failed — suspended',time:'Yesterday',c:'#B4502E'},
+                    {name:'Southern Oaks',action:'Invoice #042 paid',time:'2d ago',c:'#3C7A57'},
+                  ].map((r,i,a)=>(
+                    <div key={i} style={{display:'flex',gap:10,padding:'8px 0',borderBottom:i<a.length-1?'1px solid #F4EEDE':'none'}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:r.c,flexShrink:0,marginTop:4}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12.5,fontWeight:600,color:'#2f2a23',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
+                        <div style={{fontSize:11.5,color:'#8A8170'}}>{r.action}</div>
+                      </div>
+                      <div style={{fontSize:10.5,color:'#9a9081',flexShrink:0,whiteSpace:'nowrap'}}>{r.time}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>}
+
+          {/* ════ SUBSCRIPTIONS VIEW ════ */}
+          {view==='subscriptions'&&<>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:22}}>
+              {[['Total MRR','$'+totalMRR.toLocaleString(),'#3C7A57'],['Annual run-rate','$'+((totalMRR*12).toLocaleString()),'#1C3A2E'],['Avg revenue / stable','$'+Math.round(totalMRR/Math.max(companies.filter(c=>c.status==='active').length,1)),'#9c7026']].map(([l,v,c])=>(
+                <div key={l} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:14,padding:'18px 20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{fontSize:11.5,fontWeight:600,color:'#8A8170',marginBottom:8}}>{l}</div>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:34,fontWeight:700,color:c,lineHeight:1}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {/* Billing events table */}
+            <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,overflow:'hidden',boxShadow:'0 1px 2px rgba(40,30,15,.04)',marginBottom:18}}>
+              <div style={{padding:'16px 20px',borderBottom:'1px solid #EFE6D0',fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C'}}>Billing events</div>
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr',gap:10,padding:'10px 20px',background:'#FBF6EC',borderBottom:'1px solid #EFE6D0',fontSize:10.5,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.6}}>
+                <div>Company</div><div>Plan</div><div>Amount</div><div>Date</div><div>Status</div>
+              </div>
+              {[
+                {company:'Cedar Ridge Equestrian',plan:'Enterprise',amount:'$399',date:'Jun 1',status:'paid'},
+                {company:'Blue Creek Ranch',plan:'Enterprise',amount:'$399',date:'Jun 1',status:'paid'},
+                {company:'Hill Country Equine',plan:'Professional',amount:'$199',date:'Jun 1',status:'paid'},
+                {company:'The Winners Stable',plan:'Professional',amount:'$199',date:'Jun 1',status:'paid'},
+                {company:'Southern Oaks Boarding',plan:'Basic',amount:'$99',date:'Jun 1',status:'paid'},
+                {company:'Bluebonnet Farms',plan:'Basic',amount:'$99',date:'Jun 1',status:'failed'},
+                {company:'Lone Star Stables',plan:'Professional',amount:'$199',date:'Jun 15',status:'upcoming'},
+              ].map((row,i,a)=>(
+                <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr',gap:10,padding:'12px 20px',borderBottom:i<a.length-1?'1px solid #F4EEDE':'none',alignItems:'center'}}>
+                  <div style={{fontSize:13.5,fontWeight:600,color:'#2f2a23'}}>{row.company}</div>
+                  <span style={{fontSize:11.5,fontWeight:700,padding:'3px 9px',borderRadius:20,...planStyle(row.plan)}}>{row.plan}</span>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:15,fontWeight:700,color:'#23201C'}}>{row.amount}</div>
+                  <div style={{fontSize:13.5,color:'#5a5345'}}>{row.date}</div>
+                  <Pill label={{paid:'Paid',failed:'Failed',upcoming:'Upcoming'}[row.status]} style={{paid:{color:'#3C7A57',background:'#E5F0E7',border:'1px solid #c4dcc9'},failed:{color:'#B4502E',background:'#FBEAE2',border:'1px solid #F0B8A0'},upcoming:{color:'#9c7026',background:'#F6ECD2',border:'1px solid #e6d3a4'}}[row.status]}/>
+                </div>
+              ))}
+            </div>
+            {/* Upcoming renewals */}
+            <div style={{background:'#FBF0D8',border:'1px solid #e6d3a4',borderRadius:14,padding:'16px 20px'}}>
+              <div style={{fontSize:12,fontWeight:700,color:'#9c7026',textTransform:'uppercase',letterSpacing:.7,marginBottom:10}}>Upcoming renewals (next 30 days)</div>
+              <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+                {companies.filter(c=>c.status==='active').map(c=>(
+                  <div key={c.id} style={{background:'#fff',border:'1px solid #e6d3a4',borderRadius:10,padding:'10px 14px'}}>
+                    <div style={{fontSize:13,fontWeight:600,color:'#2f2a23'}}>{c.name}</div>
+                    <div style={{fontSize:12,color:'#8A8170',marginTop:2}}>{c.plan} · <b style={{color:'#9c7026'}}>${PLAN_MRR[c.plan]}</b></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>}
+
+          {/* ════ ANALYTICS VIEW ════ */}
+          {view==='analytics'&&<>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:13,marginBottom:22}}>
+              {[['MRR Growth','↑ 71%','Jan → Jun 2026','#3C7A57'],['New stables this month','1','Lone Star Stables','#23201C'],['Total horses managed',companies.reduce((s,c)=>s+c.horses,0)+'','Across all tenants','#9c7026'],['Churn rate','1.4%','1 suspended this period','#B4502E']].map(([l,v,s,c])=>(
+                <div key={l} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:14,padding:'15px 17px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{fontSize:11.5,fontWeight:600,color:'#8A8170',marginBottom:7}}>{l}</div>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:28,fontWeight:700,color:c,lineHeight:1}}>{v}</div>
+                  <div style={{fontSize:11.5,color:'#8A8170',marginTop:4}}>{s}</div>
+                </div>
+              ))}
+            </div>
+            {/* MRR trend */}
+            <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'22px 24px',boxShadow:'0 1px 2px rgba(40,30,15,.04)',marginBottom:18}}>
+              <div style={{fontFamily:'Spectral,serif',fontSize:18,fontWeight:600,color:'#23201C',marginBottom:18}}>MRR trend — 2026</div>
+              <div style={{display:'flex',alignItems:'flex-end',gap:10,height:120,marginBottom:12}}>
+                {analyticsData.map((r,i)=>{
+                  const v=r.mrr||r.v||0;const h=Math.round(v/maxRev*110);
+                  return <div key={r.m} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                    <div style={{fontSize:11,fontWeight:700,color:i===5?'#1C3A2E':'#8A8170'}}>${(v/1000).toFixed(1)}k</div>
+                    <div style={{width:'100%',background:i===5?'#1C3A2E':'#D4E8DC',borderRadius:'6px 6px 0 0',height:h,minHeight:8,transition:'height .4s'}}/>
+                    <div style={{fontSize:11,fontWeight:700,color:i===5?'#1C3A2E':'#9a9081'}}>{r.m}</div>
+                  </div>;
+                })}
+              </div>
+            </div>
+            {/* Per-plan counts over time */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18}}>
+              <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C',marginBottom:14}}>Company growth</div>
+                {analyticsData.map((r,i)=>(
+                  <div key={r.m} style={{display:'flex',alignItems:'center',gap:12,marginBottom:9}}>
+                    <div style={{fontSize:12,fontWeight:700,color:'#9a9081',width:28}}>{r.m}</div>
+                    <div style={{flex:1,height:8,background:'#F0E9D8',borderRadius:4,overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${Math.round(r.companies/7*100)}%`,background:'#3C7A57',borderRadius:4,transition:'width .4s'}}/>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:'#1C3A2E',width:20,textAlign:'right'}}>{r.companies}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C',marginBottom:14}}>Horses managed</div>
+                {analyticsData.map((r,i)=>(
+                  <div key={r.m} style={{display:'flex',alignItems:'center',gap:12,marginBottom:9}}>
+                    <div style={{fontSize:12,fontWeight:700,color:'#9a9081',width:28}}>{r.m}</div>
+                    <div style={{flex:1,height:8,background:'#F0E9D8',borderRadius:4,overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${Math.round(r.horses/340*100)}%`,background:'#9c7026',borderRadius:4,transition:'width .4s'}}/>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:'#1C3A2E',width:28,textAlign:'right'}}>{r.horses}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>}
+
+          {/* ════ SUPPORT VIEW ════ */}
+          {view==='support'&&<>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:13,marginBottom:20}}>
+              {[['Open',tickets.filter(t=>t.status==='open').length,'Need attention','#B4502E'],['Resolved',tickets.filter(t=>t.status==='resolved').length,'This week','#3C7A57'],['High priority',tickets.filter(t=>t.priority==='high'&&t.status==='open').length,'Act immediately','#C99A4A'],['Avg response','< 4h','Team average','#9a9081']].map(([l,v,s,c])=>(
+                <div key={l} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:14,padding:'15px 17px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{fontSize:11.5,fontWeight:600,color:'#8A8170',marginBottom:7}}>{l}</div>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:28,fontWeight:700,color:c,lineHeight:1}}>{v}</div>
+                  <div style={{fontSize:11.5,color:'#8A8170',marginTop:4}}>{s}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,overflow:'hidden',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+              <div style={{display:'grid',gridTemplateColumns:'80px 2fr 2.5fr 1fr 1fr 80px',gap:10,padding:'11px 20px',background:'#FBF6EC',borderBottom:'1px solid #EFE6D0',fontSize:10.5,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.6,alignItems:'center'}}>
+                <div>ID</div><div>Company</div><div>Subject</div><div>Priority</div><div>Status</div><div></div>
+              </div>
+              {tickets.map((t,i,a)=>(
+                <div key={t.id} style={{display:'grid',gridTemplateColumns:'80px 2fr 2.5fr 1fr 1fr 80px',gap:10,padding:'13px 20px',borderBottom:i<a.length-1?'1px solid #F4EEDE':'none',alignItems:'center',background:'#fff',transition:'.12s'}}>
+                  <div style={{fontSize:12,fontWeight:700,color:'#9a9081'}}>#{t.id}</div>
+                  <div style={{fontSize:13.5,fontWeight:600,color:'#2f2a23'}}>{t.company}</div>
+                  <div style={{fontSize:13,color:'#5a5345'}}>{t.subject}</div>
+                  <Pill label={t.priority.charAt(0).toUpperCase()+t.priority.slice(1)} style={{high:{color:'#B4502E',background:'#FBEAE2',border:'1px solid #F0B8A0'},normal:{color:'#9c7026',background:'#F6ECD2',border:'1px solid #e6d3a4'},low:{color:'#5a5345',background:'#F1EADA',border:'1px solid #E4D9C0'}}[t.priority]}/>
+                  <Pill label={t.status==='open'?'Open':'Resolved'} style={t.status==='open'?{color:'#B4502E',background:'#FBEAE2',border:'1px solid #F0B8A0'}:{color:'#3C7A57',background:'#E5F0E7',border:'1px solid #c4dcc9'}}/>
+                  {t.status==='open'
+                    ?<button onClick={()=>doResolveTicket(t.id)} style={{padding:'5px 10px',fontSize:11.5,fontWeight:600,color:'#3C7A57',background:'#E5F0E7',border:'none',borderRadius:7,cursor:'pointer',fontFamily:'inherit'}}>Resolve</button>
+                    :<div style={{fontSize:11.5,color:'#9a9081',fontStyle:'italic'}}>{t.assignee}</div>}
+                </div>
+              ))}
+            </div>
+          </>}
+
+        </main>
+      </div>
+
+      {/* ════ MODALS ════ */}
+
+      {/* Impersonate */}
+      {modal?.type==='impersonate'&&<Overlay onClose={!impersonating?closeModal:undefined}>
+        <ModalCard title={`Log in as ${modal.company.owner}`} onClose={!impersonating?closeModal:null} width={420}>
+          {!impersonating?<>
+            <p style={{fontSize:13.5,color:'#5a5345',lineHeight:1.6,marginBottom:20}}>
+              You're about to open <b>{modal.company.name}</b>'s workspace as its owner (<b>{modal.company.ownerEmail}</b>). This will open the app in a new tab. The action is logged.
+            </p>
+            <div style={{padding:'12px 14px',background:'#FBF0D8',border:'1px solid #e6d3a4',borderRadius:10,fontSize:12.5,color:'#7a5200',marginBottom:20}}>
+              ⚠️ Impersonation sessions are recorded in the audit log for security.
+            </div>
+          </> :<div style={{textAlign:'center',padding:'24px 0'}}>
+            <div style={{width:40,height:40,borderRadius:'50%',border:'3px solid #E5F0E7',borderTopColor:'#3C7A57',animation:'spin .7s linear infinite',margin:'0 auto 16px'}}/>
+            <div style={{fontSize:14,fontWeight:600,color:'#23201C',marginBottom:4}}>Connecting to {modal.company.name}…</div>
+            <div style={{fontSize:12.5,color:'#8A8170'}}>Opening in a new tab</div>
+          </div>}
+          {!impersonating&&<div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:8}}>
+            <Btn variant="secondary" onClick={closeModal}>Cancel</Btn>
+            <Btn variant="primary" onClick={()=>doImpersonate(modal.company)}>Connect as owner</Btn>
+          </div>}
+        </ModalCard>
+      </Overlay>}
+
+      {/* Change plan */}
+      {modal?.type==='change-plan'&&<Overlay onClose={closeModal}>
+        <ModalCard title="Change plan" onClose={closeModal} width={440}
+          footer={<><Btn variant="secondary" onClick={closeModal}>Cancel</Btn><Btn variant="primary" onClick={()=>doChangePlan(modal.company)}>Save plan</Btn></>}>
+          <p style={{fontSize:13.5,color:'#5a5345',marginBottom:18}}>Select a new plan for <b>{modal.company.name}</b>. Changes take effect immediately.</p>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {[['Basic','$99/mo','Up to 50 horses · 5 users'],['Professional','$199/mo','Up to 200 horses · 20 users'],['Enterprise','$399/mo','Unlimited horses & users']].map(([p,pr,desc])=>(
+              <div key={p} onClick={()=>setPlanForm(p)} style={{display:'flex',alignItems:'center',gap:14,padding:'13px 16px',border:`2px solid ${planForm===p?{'Basic':'#9a9081','Professional':'#2A6FDB','Enterprise':'#1C3A2E'}[p]:'#E8DFCC'}`,borderRadius:12,cursor:'pointer',background:planForm===p?'#F9FBFF':'#fff',transition:'.15s'}}>
+                <div style={{width:20,height:20,borderRadius:'50%',border:`2.5px solid ${planForm===p?{'Basic':'#9a9081','Professional':'#2A6FDB','Enterprise':'#1C3A2E'}[p]:'#cdbf9f'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  {planForm===p&&<div style={{width:10,height:10,borderRadius:'50%',background:{'Basic':'#9a9081','Professional':'#2A6FDB','Enterprise':'#1C3A2E'}[p]}}/>}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700,color:'#23201C'}}>{p}</div>
+                  <div style={{fontSize:12,color:'#8A8170'}}>{desc}</div>
+                </div>
+                <div style={{fontFamily:'Spectral,serif',fontSize:18,fontWeight:700,color:{'Basic':'#9a9081','Professional':'#2A6FDB','Enterprise':'#1C3A2E'}[p]}}>{pr}</div>
+              </div>
+            ))}
+          </div>
+        </ModalCard>
+      </Overlay>}
+
+      {/* Suspend / Reactivate */}
+      {modal?.type==='suspend'&&<Overlay onClose={closeModal}>
+        <ModalCard title={modal.company.status==='suspended'?'Reactivate account':'Suspend account'} onClose={closeModal} width={420}
+          footer={<><Btn variant="secondary" onClick={closeModal}>Cancel</Btn><Btn variant={modal.company.status==='suspended'?'primary':'danger'} onClick={()=>doSuspend(modal.company)}>{modal.company.status==='suspended'?'Reactivate':'Suspend'}</Btn></>}>
+          {modal.company.status==='suspended'
+            ?<p style={{fontSize:13.5,color:'#5a5345',lineHeight:1.6}}>Reactivating <b>{modal.company.name}</b> will restore full access for all their users and resume billing on their next cycle.</p>
+            :<>
+              <p style={{fontSize:13.5,color:'#5a5345',lineHeight:1.6,marginBottom:14}}>Suspending <b>{modal.company.name}</b> will immediately lock out all their users. Their data is preserved and the account can be reactivated.</p>
+              <div style={{padding:'12px 14px',background:'#FBEAE2',border:'1px solid #F0B8A0',borderRadius:10,fontSize:12.5,color:'#B4502E'}}>This action is reversible. Data is not deleted.</div>
+            </>}
+        </ModalCard>
+      </Overlay>}
+
+      {/* Add company */}
+      {modal?.type==='add-company'&&<Overlay onClose={closeModal}>
+        <ModalCard title="Add new company" onClose={closeModal} width={500}
+          footer={<><Btn variant="secondary" onClick={closeModal}>Cancel</Btn><Btn variant="primary" disabled={!addForm.name||!addForm.email} onClick={doAddCompany}>Create company</Btn></>}>
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <InpField label="Barn / company name" value={addForm.name} onChange={v=>setAddForm(f=>({...f,name:v}))} placeholder="e.g. Sunrise Stables"/>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <InpField label="Owner name" value={addForm.owner} onChange={v=>setAddForm(f=>({...f,owner:v}))} placeholder="Jane Doe"/>
+              <InpField label="Owner email" type="email" value={addForm.email} onChange={v=>setAddForm(f=>({...f,email:v}))} placeholder="jane@stable.com"/>
+            </div>
+            <InpField label="Location" value={addForm.loc} onChange={v=>setAddForm(f=>({...f,loc:v}))} placeholder="City, TX"/>
+            <SelField label="Starting plan" value={addForm.plan} onChange={v=>setAddForm(f=>({...f,plan:v}))} options={['Basic','Professional','Enterprise']}/>
+            <div style={{padding:'11px 14px',background:'#F2F5EE',border:'1px solid #DDE7D5',borderRadius:10,fontSize:12.5,color:'#5a5345'}}>
+              ✓ Account starts in <b>trial</b> status · 14-day free trial · No payment required at creation
+            </div>
+          </div>
+        </ModalCard>
+      </Overlay>}
+
+    </div>
+  );
+}
+
+// ─── Root ───────────────────────────────────────────────────────────────────
+function App(){
+  const [admin,setAdmin]=React.useState(()=>window.DB.getPlatformAuth());
+  return admin
+    ?<Dashboard user={admin} onLogout={()=>{window.DB.platformLogout();setAdmin(null);}}/>
+    :<LoginScreen onLogin={setAdmin}/>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

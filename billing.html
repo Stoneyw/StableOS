@@ -1,0 +1,229 @@
+<!-- @dsCard group="StableOS" viewport="1440x900" name="Billing" subtitle="Monthly invoices, payment tracking, and outstanding balances by boarder" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StableOS — Billing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#EBE2CF;-webkit-font-smoothing:antialiased;height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#cdbf9f;border-radius:8px;border:2.5px solid transparent;background-clip:content-box}
+</style>
+</head>
+<body><div id="root" style="height:100vh"></div>
+<script type="text/babel">
+const DS = window.StableOSDesignSystem_8c3955 || {};
+const { Avatar, Badge, StatusBadge } = DS;
+
+const MONTHS = ['Mar','Apr','May','Jun'];
+const MONTH_LABELS = { Mar:'March 2026', Apr:'April 2026', May:'May 2026', Jun:'June 2026' };
+
+const PALETTE = ['#3C7A57','#9c7026','#7A4A2B','#5a6b8c','#a05a4a','#4a7a8c'];
+function hashColor(n){ let h=0; for(const c of (n||'')) h=(h*31+c.charCodeAt(0))>>>0; return PALETTE[h%PALETTE.length]; }
+function initials(n){ return (n||'').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+
+const BOARDERS_INIT = [
+  {id:'b1', name:'Emily',          horses:['Georgia'],                          rate:350,  paid:{Mar:true, Apr:true,  May:true,  Jun:false}},
+  {id:'b2', name:'Christy',        horses:['Sophie','Alvin'],                   rate:600,  paid:{Mar:true, Apr:true,  May:true,  Jun:true}},
+  {id:'b3', name:'Stephanie',      horses:['Foxy'],                             rate:350,  paid:{Mar:true, Apr:true,  May:false, Jun:false}},
+  {id:'b4', name:'Laine',          horses:['Rio'],                              rate:350,  paid:{Mar:true, Apr:true,  May:true,  Jun:false}},
+  {id:'b5', name:'Laurel',         horses:['Pretzel','Amali'],                  rate:600,  paid:{Mar:true, Apr:false, May:false, Jun:false}},
+  {id:'b6', name:'Maddie',         horses:['Journey'],                          rate:350,  paid:{Mar:true, Apr:true,  May:true,  Jun:true}},
+  {id:'b7', name:'Mani',           horses:['Santana'],                          rate:350,  paid:{Mar:true, Apr:true,  May:true,  Jun:false}},
+  {id:'b8', name:'Bri',            horses:['Malibu'],                           rate:350,  paid:{Mar:true, Apr:true,  May:false, Jun:false}},
+  {id:'b9', name:'Chris & Eileen', horses:['Lena','Whiskey','Jig','Rohze','Tess'], rate:1400, paid:{Mar:true, Apr:true, May:true, Jun:true}},
+  {id:'b10',name:'Charlie',        horses:['Diamond','Ruby'],                   rate:550,  paid:{Mar:true, Apr:true,  May:true,  Jun:false}},
+];
+
+const NAV = [
+  {id:'dashboard', label:'Dashboard', ic:'M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6'},
+  {id:'horses',    label:'Horses',    ic:'M5 21V9l4-3 3 2.5h3a3 3 0 0 1 3 3V21M5 13h6M9 21v-5'},
+  {id:'boarders',  label:'Boarders',  ic:'M16 6.2a3 3 0 0 1 0 5.6M3.5 20a5.5 5.5 0 0 1 11 0'},
+  {id:'billing',   label:'Billing',   ic:'M2 5h20v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2ZM2 10h20', active:true},
+  {id:'reports',   label:'Reports',   ic:'M3 12h4l2-5 3 10 2-7 2 2h5'},
+  {id:'messages',  label:'Messages',  ic:'M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1Z'},
+];
+
+function SidebarIcon({ d }) {
+  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {d.split('M').filter(Boolean).map((seg, i) => <path key={i} d={'M'+seg}/>)}
+  </svg>;
+}
+
+function App() {
+  const [month,   setMonth]   = React.useState('Jun');
+  const [billings,setBillings]= React.useState(BOARDERS_INIT);
+  const [expanded,setExpanded]= React.useState(null);
+  const [editRate, setEditRate]= React.useState({});
+
+  const tog = (id, m) => setBillings(bs => bs.map(b => b.id===id ? {...b, paid:{...b.paid, [m]:!b.paid[m]}} : b));
+  const getRate = b => editRate[b.id] !== undefined ? editRate[b.id] : b.rate;
+
+  const billed    = billings.reduce((s,b) => s + getRate(b), 0);
+  const collected = billings.filter(b => b.paid[month]).reduce((s,b) => s + getRate(b), 0);
+  const outstanding = billed - collected;
+
+  const outstanding_all = billings.map(b => {
+    const unpaidMonths = MONTHS.filter(m => !b.paid[m]).length;
+    return unpaidMonths * getRate(b);
+  });
+  const totalOutstanding = outstanding_all.reduce((s,v) => s+v, 0);
+
+  return (
+    <div style={{display:'flex',height:'100vh',overflow:'hidden',background:'#EBE2CF'}}>
+      {/* SIDEBAR */}
+      <aside style={{width:248,flexShrink:0,background:'linear-gradient(180deg,#1C3A2E,#15291F)',color:'#E9E2D0',display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'20px 18px 14px',display:'flex',alignItems:'center',gap:11,borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+          <div style={{width:38,height:38,borderRadius:10,background:'linear-gradient(150deg,#C99A4A,#9c7026)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:'0 4px 10px rgba(0,0,0,.25)'}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C3A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg>
+          </div>
+          <div>
+            <div style={{fontFamily:'Spectral,serif',fontWeight:700,fontSize:15,lineHeight:1}}>The Winners Stable</div>
+            <div style={{fontSize:10.5,color:'#9DBCA8',letterSpacing:1.3,textTransform:'uppercase',marginTop:4}}>Georgetown, TX</div>
+          </div>
+        </div>
+        <nav style={{flex:1,padding:'14px 10px',display:'flex',flexDirection:'column',gap:3}}>
+          {NAV.map(n => (
+            <div key={n.id} style={{display:'flex',alignItems:'center',gap:11,borderRadius:10,padding:'10px 12px',fontSize:13.5,fontWeight:n.active?600:500,background:n.active?'rgba(201,154,74,.16)':'transparent',color:n.active?'#F3E7CB':'#BBD0C2',boxShadow:n.active?'inset 3px 0 0 #C99A4A':'none',cursor:'pointer'}}>
+              <span style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><SidebarIcon d={n.ic}/></span>
+              <span>{n.label}</span>
+            </div>
+          ))}
+        </nav>
+        <div style={{padding:'12px 14px',borderTop:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:10}}>
+          <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(150deg,#3C7A57,#2a5b3e)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,color:'#fff',flexShrink:0}}>CE</div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13.5,fontWeight:600}}>Chris & Eileen</div><div style={{fontSize:11.5,color:'#9DBCA8'}}>Manager</div></div>
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}>
+        <header style={{height:68,flexShrink:0,background:'rgba(247,242,231,.88)',backdropFilter:'blur(8px)',borderBottom:'1px solid #E0D5BC',display:'flex',alignItems:'center',gap:16,padding:'0 26px'}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'Spectral,serif',fontSize:22,fontWeight:600,color:'#23201C'}}>Billing</div>
+            <div style={{fontSize:12,color:'#8A8170',marginTop:2}}>{MONTH_LABELS[month]} · {billings.length} active boarders</div>
+          </div>
+          <button style={{display:'flex',alignItems:'center',gap:7,background:'#FBF6EC',border:'1px solid #E4D9C0',color:'#5a5345',borderRadius:10,padding:'9px 15px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9c7026" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Export PDF
+          </button>
+          <button style={{display:'flex',alignItems:'center',gap:7,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:10,padding:'10px 16px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 4px 12px rgba(28,58,46,.25)'}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Send invoices
+          </button>
+        </header>
+
+        <main style={{flex:1,overflowY:'auto',padding:'22px 26px 48px'}}>
+          <div style={{maxWidth:1180,margin:'0 auto'}}>
+
+            {/* Summary cards */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:22}}>
+              {[
+                ['Billed in '+month, '$'+billed.toLocaleString(), 'All boarders', '#9c7026'],
+                ['Collected',        '$'+collected.toLocaleString(), billings.filter(b=>b.paid[month]).length+' boarders paid', '#3C7A57'],
+                ['Outstanding ('+month+')', '$'+outstanding.toLocaleString(), billings.filter(b=>!b.paid[month]).length+' yet to pay', '#B4502E'],
+                ['Total outstanding', '$'+totalOutstanding.toLocaleString(), 'Across all months', '#5a6b8c'],
+              ].map(([l,v,s,c]) => (
+                <div key={l} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:14,padding:'16px 18px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{fontSize:11.5,fontWeight:600,color:'#8A8170',marginBottom:8}}>{l}</div>
+                  <div style={{fontFamily:'Spectral,serif',fontSize:30,fontWeight:700,color:c,lineHeight:1}}>{v}</div>
+                  <div style={{fontSize:11.5,color:'#8A8170',marginTop:5,fontWeight:500}}>{s}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Month tabs */}
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+              <div style={{display:'flex',background:'#fff',border:'1px solid #E4D9C0',borderRadius:11,padding:4,gap:3}}>
+                {MONTHS.map(m => (
+                  <button key={m} onClick={()=>setMonth(m)} style={{padding:'7px 18px',borderRadius:8,border:'none',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',background:month===m?'#1C3A2E':'transparent',color:month===m?'#F1EBDB':'#7c7363',transition:'.15s'}}>{m} 2026</button>
+                ))}
+              </div>
+              <div style={{flex:1}}/>
+              <button onClick={()=>setBillings(bs=>bs.map(b=>({...b,paid:{...b.paid,[month]:true}})))} style={{padding:'8px 14px',background:'#E5F0E7',color:'#3C7A57',border:'1px solid #c4dcc9',borderRadius:9,fontFamily:'inherit',fontSize:12.5,fontWeight:600,cursor:'pointer'}}>✓ Mark all {month} paid</button>
+            </div>
+
+            {/* Billing table */}
+            <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,overflow:'hidden',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1.6fr 100px 1fr 1fr 1fr 1fr 100px',gap:10,padding:'11px 20px',background:'#FBF6EC',borderBottom:'1px solid #EFE6D0',fontSize:10.5,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.6,alignItems:'center'}}>
+                <div>Boarder</div><div>Horses</div><div>Rate/mo</div>
+                {MONTHS.map(m => <div key={m} style={{textAlign:'center'}}>{m}</div>)}
+                <div style={{textAlign:'right'}}>Balance</div>
+              </div>
+              {billings.map((b,i) => {
+                const rate = getRate(b);
+                const bal = MONTHS.filter(m=>!b.paid[m]).length * rate;
+                const isExp = expanded === b.id;
+                return (
+                  <React.Fragment key={b.id}>
+                    <div onClick={()=>setExpanded(isExp?null:b.id)} style={{display:'grid',gridTemplateColumns:'2fr 1.6fr 100px 1fr 1fr 1fr 1fr 100px',gap:10,padding:'13px 20px',borderBottom:'1px solid #F4EEDE',alignItems:'center',cursor:'pointer',background:isExp?'#FBF6EC':'#fff',transition:'.15s'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:11}}>
+                        {Avatar ? <Avatar name={b.name} size="sm"/> : <div style={{width:34,height:34,borderRadius:'50%',background:hashColor(b.name),color:'#fff',fontWeight:700,fontSize:12,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{initials(b.name)}</div>}
+                        <div><div style={{fontSize:14,fontWeight:600,color:'#2f2a23'}}>{b.name}</div><div style={{fontSize:11.5,color:'#8A8170'}}>Boarding since Jan 2024</div></div>
+                      </div>
+                      <div style={{fontSize:12.5,color:'#5a5345',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{b.horses.join(', ')}</div>
+                      <div style={{display:'flex',alignItems:'center',gap:4}}>
+                        <span style={{fontFamily:'Spectral,serif',fontSize:15,fontWeight:600,color:'#23201C'}}>${rate}</span>
+                      </div>
+                      {MONTHS.map(m => (
+                        <div key={m} style={{display:'flex',justifyContent:'center'}}>
+                          <button onClick={e=>{e.stopPropagation();tog(b.id,m)}} style={{padding:'4px 10px',borderRadius:20,border:`1px solid ${b.paid[m]?'#c4dcc9':'#F0B8A0'}`,background:b.paid[m]?'#E5F0E7':'#FBEAE2',color:b.paid[m]?'#3C7A57':'#B4502E',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',transition:'.15s'}}>
+                            {b.paid[m]?'✓ Paid':'Unpaid'}
+                          </button>
+                        </div>
+                      ))}
+                      <div style={{textAlign:'right',fontFamily:'Spectral,serif',fontSize:16,fontWeight:700,color:bal>0?'#B4502E':'#3C7A57'}}>{bal>0?`$${bal}`:' Paid up'}</div>
+                    </div>
+                    {isExp && (
+                      <div style={{padding:'14px 20px 16px',background:'#FAFAF6',borderBottom:'1px solid #F4EEDE'}}>
+                        <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-start'}}>
+                          <div style={{flex:1,minWidth:220}}>
+                            <div style={{fontSize:10,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.6,marginBottom:10}}>Invoice breakdown</div>
+                            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                              {MONTHS.map(m => (
+                                <div key={m} style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'#5a5345'}}>
+                                  <span style={{width:52,color:'#8A8170'}}>{m} 2026</span>
+                                  <span style={{fontWeight:600,color:'#23201C'}}>${rate}</span>
+                                  <span style={{marginLeft:'auto',fontSize:11,fontWeight:700,color:b.paid[m]?'#3C7A57':'#B4502E',background:b.paid[m]?'#E5F0E7':'#FBEAE2',padding:'2px 8px',borderRadius:20}}>{b.paid[m]?'Paid':'Unpaid'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                            <div style={{fontSize:10,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.6,marginBottom:2}}>Rate</div>
+                            <div style={{display:'flex',alignItems:'center',gap:6,background:'#fff',border:'1px solid #E4D9C0',borderRadius:9,padding:'8px 12px'}}>
+                              <span style={{fontSize:14,color:'#5a5345'}}>$</span>
+                              <input type="number" value={editRate[b.id]!==undefined?editRate[b.id]:b.rate} onChange={e=>setEditRate(r=>({...r,[b.id]:Number(e.target.value)}))} style={{width:70,border:'none',outline:'none',fontFamily:'inherit',fontSize:15,fontWeight:700,color:'#23201C',background:'transparent'}} min={0}/>
+                              <span style={{fontSize:12,color:'#8A8170'}}>/mo</span>
+                            </div>
+                            <button style={{padding:'8px 14px',background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:9,fontFamily:'inherit',fontSize:12.5,fontWeight:600,cursor:'pointer'}}>Send invoice</button>
+                            <button style={{padding:'8px 14px',background:'#FBEAE2',color:'#B4502E',border:'1px solid #F0B8A0',borderRadius:9,fontFamily:'inherit',fontSize:12.5,fontWeight:600,cursor:'pointer'}}>Mark all unpaid</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 20px',background:'#FBF6EC',borderTop:'1px solid #EFE6D0'}}>
+                <div style={{fontSize:13,fontWeight:600,color:'#5a5345'}}>{billings.length} boarders · {billings.filter(b=>b.paid[month]).length} paid in {month}</div>
+                <div style={{fontFamily:'Spectral,serif',fontSize:16,fontWeight:700,color:'#B4502E'}}>Outstanding: ${outstanding.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

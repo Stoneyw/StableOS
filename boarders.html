@@ -1,0 +1,384 @@
+<!-- @dsCard group="StableOS" viewport="1440x900" name="Boarders" subtitle="Boarding client directory with profiles, horse lists, and contact management" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StableOS — Boarders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#EBE2CF;-webkit-font-smoothing:antialiased;height:100vh;overflow:hidden}
+a{text-decoration:none;color:inherit}
+::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#cdbf9f;border-radius:8px;border:2.5px solid transparent;background-clip:content-box}
+input,select{font-family:inherit}
+</style>
+</head>
+<body><div id="root" style="height:100vh"></div>
+<script type="text/babel">
+const DS = window.StableOSDesignSystem_8c3955 || {};
+const { Avatar } = DS;
+
+const PALETTE = ['#3C7A57','#9c7026','#7A4A2B','#5a6b8c','#a05a4a','#4a7a8c'];
+const hc = n => { let h=0; for(const c of (n||'')) h=(h*31+c.charCodeAt(0))>>>0; return PALETTE[h%PALETTE.length]; };
+const ini = n => (n||'').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+
+const COAT = {Bay:'linear-gradient(150deg,#6e4524,#39230f)',Chestnut:'linear-gradient(150deg,#9d5527,#67311a)',Sorrel:'linear-gradient(150deg,#a85f30,#79401e)',Palomino:'linear-gradient(150deg,#e2c07c,#bb8d40)',Grey:'linear-gradient(150deg,#c7bfb1,#8e857a)',Black:'linear-gradient(150deg,#3b332c,#181410)',Buckskin:'linear-gradient(150deg,#cfa563,#8c6c3a)',Roan:'linear-gradient(150deg,#a07080,#6a4a50)',Dun:'linear-gradient(150deg,#c4a96a,#8a7040)'};
+const COATS = ['Bay','Chestnut','Sorrel','Palomino','Grey','Black','Buckskin','Roan','Dun'];
+const BOARD_TYPES = ['Paddock board','Stall board','Partial board','Training board'];
+
+const INIT_BOARDERS = [
+  {id:'b1', name:'Emily',         phone:'',             email:'emily@email.com',     since:'Jan 2024', horses:['Georgia'],                               coats:['Bay'],                                        boardTypes:['Paddock board'],                                                         rate:350},
+  {id:'b2', name:'Christy',       phone:'512-767-8019', email:'christy@email.com',   since:'Mar 2023', horses:['Sophie','Alvin'],                        coats:['Chestnut','Sorrel'],                          boardTypes:['Paddock board','Paddock board'],                                         rate:600},
+  {id:'b3', name:'Stephanie',     phone:'512-468-3002', email:'stephanie@email.com', since:'Aug 2023', horses:['Foxy'],                                  coats:['Palomino'],                                   boardTypes:['Paddock board'],                                                         rate:350},
+  {id:'b4', name:'Laine',         phone:'512-567-3022', email:'laine@email.com',     since:'Jun 2022', horses:['Rio'],                                   coats:['Bay'],                                        boardTypes:['Paddock board'],                                                         rate:350},
+  {id:'b5', name:'Laurel',        phone:'214-901-8764', email:'laurel@email.com',    since:'Feb 2024', horses:['Pretzel','Amali'],                        coats:['Grey','Black'],                               boardTypes:['Paddock board','Paddock board'],                                         rate:600},
+  {id:'b6', name:'Maddie',        phone:'971-228-9916', email:'maddie@email.com',    since:'Nov 2023', horses:['Journey'],                               coats:['Buckskin'],                                   boardTypes:['Paddock board'],                                                         rate:350},
+  {id:'b7', name:'Mani',          phone:'254-624-0966', email:'mani@email.com',      since:'Apr 2023', horses:['Santana'],                               coats:['Chestnut'],                                   boardTypes:['Paddock board'],                                                         rate:350},
+  {id:'b8', name:'Bri',           phone:'512-796-1931', email:'bri@email.com',       since:'Jul 2024', horses:['Malibu'],                                coats:['Palomino'],                                   boardTypes:['Paddock board'],                                                         rate:350},
+  {id:'b9', name:'Chris & Eileen',phone:'512-585-4092', email:'chris@email.com',     since:'Sep 2021', horses:['Lena','Whiskey','Jig','Rohze','Tess'],    coats:['Bay','Sorrel','Bay','Bay','Grey'],             boardTypes:['Paddock board','Paddock board','Stall board','Stall board','Stall board'], rate:1400},
+  {id:'b10',name:'Charlie',       phone:'512-549-0051', email:'charlie@email.com',   since:'Dec 2022', horses:['Diamond','Ruby'],                        coats:['Black','Bay'],                                boardTypes:['Stall board','Stall board'],                                             rate:550},
+];
+
+const NAV = [
+  {href:'app.html',      id:'dashboard', label:'Dashboard'},
+  {href:'app.html',      id:'horses',    label:'Horses'},
+  {href:'boarders.html', id:'boarders',  label:'Boarders', active:true},
+  {href:'app.html',      id:'feeding',   label:'Feeding Board'},
+  {href:'tasks.html',    id:'tasks',     label:'Daily Tasks', badge:'6'},
+  {href:'medical.html',  id:'medical',   label:'Medical Records'},
+  {href:'calendar.html', id:'calendar',  label:'Arena Calendar'},
+  {href:'facility.html', id:'facility',  label:'Facility Map'},
+  {href:'messages.html', id:'messages',  label:'Messages', badge:'2'},
+  {href:'billing.html',  id:'billing',   label:'Billing'},
+  {href:'reports.html',  id:'reports',   label:'Reports'},
+];
+const ICONS = {
+  dashboard:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>',
+  horses:'<path d="M5 21V9l4-3 3 2.5h3a3 3 0 0 1 3 3V21"/><path d="M5 13h6"/><path d="M9 21v-5"/>',
+  boarders:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 6.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.4A5.5 5.5 0 0 1 20.5 20"/>',
+  feeding:'<path d="M5 8h14l-1.4 11.2a2 2 0 0 1-2 1.8H8.4a2 2 0 0 1-2-1.8Z"/><path d="M5 8l1-3.5h12L19 8"/>',
+  tasks:'<path d="M9 11l2 2 4-4"/><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M8 3v3M16 3v3"/>',
+  medical:'<path d="M3 12h4l2-5 3 10 2-7 2 2h5"/>',
+  calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+  facility:'<path d="m9 4 6 2 5-2v14l-5 2-6-2-5 2V6Z"/><path d="M9 4v14M15 6v14"/>',
+  messages:'<path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1Z"/>',
+  billing:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  reports:'<path d="M3 12h4l2-5 3 10 2-7 2 2h5"/>',
+};
+
+/* ── Shared field ── */
+function Field({label, value, onChange, type='text', opts}) {
+  const base = {width:'100%',padding:'9px 12px',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none'};
+  return (
+    <div style={{marginBottom:13}}>
+      <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{label}</div>
+      {opts
+        ? <select value={value} onChange={e=>onChange(e.target.value)} style={{...base,border:'1.5px solid #E4D9C0',background:'#fff',cursor:'pointer'}}>
+            {opts.map(o=><option key={o}>{o}</option>)}
+          </select>
+        : <input type={type} value={value||''} onChange={e=>onChange(e.target.value)} style={{...base,border:'1.5px solid #C99A4A',background:'#FFFDF7',color:'#2f2a23'}}/>
+      }
+    </div>
+  );
+}
+
+/* ── Modal shell ── */
+function Modal({title, onClose, onSave, onDelete, children}) {
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:400,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={onClose}>
+      <div style={{background:'#fff',borderRadius:18,padding:26,width:'100%',maxWidth:460,boxShadow:'0 24px 60px rgba(0,0,0,.3)',maxHeight:'90vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:20}}>
+          <div style={{fontFamily:'Spectral,serif',fontSize:20,fontWeight:600,color:'#23201C',flex:1}}>{title}</div>
+          <button onClick={onClose} style={{width:32,height:32,borderRadius:8,border:'1px solid #E4D9C0',background:'#FBF6EC',color:'#5a5345',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>×</button>
+        </div>
+        {children}
+        <div style={{display:'flex',gap:9,marginTop:22}}>
+          {onDelete && <button onClick={onDelete} style={{padding:'10px 16px',background:'#fff',color:'#B4502E',border:'1.5px solid #f0cfc7',borderRadius:10,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete</button>}
+          <div style={{flex:1}}/>
+          <button onClick={onClose} style={{padding:'10px 18px',background:'#FBF6EC',color:'#5a5345',border:'1px solid #E4D9C0',borderRadius:10,fontFamily:'inherit',fontSize:13,cursor:'pointer'}}>Cancel</button>
+          <button onClick={onSave} style={{padding:'10px 20px',background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Save changes</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Sidebar() {
+  return (
+    <aside style={{width:248,flexShrink:0,background:'linear-gradient(180deg,#1C3A2E,#15291F)',color:'#E9E2D0',display:'flex',flexDirection:'column'}}>
+      <div style={{padding:'20px 18px 14px',display:'flex',alignItems:'center',gap:11,borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+        <div style={{width:38,height:38,borderRadius:10,background:'linear-gradient(150deg,#C99A4A,#9c7026)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:'0 4px 10px rgba(0,0,0,.25)'}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C3A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg>
+        </div>
+        <div>
+          <div style={{fontFamily:'Spectral,serif',fontWeight:700,fontSize:15,lineHeight:1}}>The Winners Stable</div>
+          <div style={{fontSize:10.5,color:'#9DBCA8',letterSpacing:1.3,textTransform:'uppercase',marginTop:4}}>Georgetown, TX</div>
+        </div>
+      </div>
+      <nav style={{flex:1,overflowY:'auto',padding:'14px 10px',display:'flex',flexDirection:'column',gap:3}}>
+        {NAV.map(n => (
+          <a key={n.id} href={n.href} style={{display:'flex',alignItems:'center',gap:11,borderRadius:10,padding:'10px 12px',fontSize:13.5,fontWeight:n.active?600:500,background:n.active?'rgba(201,154,74,.16)':'transparent',color:n.active?'#F3E7CB':'#BBD0C2',boxShadow:n.active?'inset 3px 0 0 #C99A4A':'none',transition:'.15s',textDecoration:'none'}}>
+            <span style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:ICONS[n.id]||ICONS.dashboard}}/>
+            </span>
+            <span style={{flex:1}}>{n.label}</span>
+            {n.badge && <span style={{background:'#B4502E',color:'#fff',fontSize:10.5,fontWeight:700,minWidth:18,height:18,padding:'0 5px',borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center'}}>{n.badge}</span>}
+          </a>
+        ))}
+      </nav>
+      <div style={{padding:'12px 14px',borderTop:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:10}}>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(150deg,#3C7A57,#2a5b3e)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,color:'#fff',flexShrink:0}}>CE</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:13.5,fontWeight:600}}>Chris &amp; Eileen</div>
+          <div style={{fontSize:11.5,color:'#9DBCA8'}}>Manager</div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function App() {
+  const [view,       setView]       = React.useState('directory');
+  const [selected,   setSelected]   = React.useState(null);
+  const [boarders,   setBoarders]   = React.useState(INIT_BOARDERS);
+  const [editBoarder,setEditBoarder]= React.useState(null);
+  const [editHorse,  setEditHorse]  = React.useState(null);
+  const [addOpen,    setAddOpen]    = React.useState(false);
+  const [newB,       setNewB]       = React.useState({name:'',phone:'',email:'',since:''});
+
+  const bp = boarders.find(b => b.id === selected);
+  const openProfile = id => { setSelected(id); setView('profile'); };
+
+  /* ── Save boarder edits ── */
+  const saveBoarder = () => {
+    setBoarders(bs => bs.map(b => b.id === editBoarder.id
+      ? {...b, name:editBoarder.name, phone:editBoarder.phone, email:editBoarder.email, since:editBoarder.since}
+      : b));
+    setEditBoarder(null);
+  };
+
+  /* ── Save horse edits ── */
+  const saveHorse = () => {
+    setBoarders(bs => bs.map(b => {
+      if (b.id !== editHorse.boarderId) return b;
+      const horses     = [...b.horses];
+      const coats      = [...b.coats];
+      const boardTypes = [...(b.boardTypes || b.horses.map(()=>'Paddock board'))];
+      horses[editHorse.idx]     = editHorse.name;
+      coats[editHorse.idx]      = editHorse.coat;
+      boardTypes[editHorse.idx] = editHorse.boardType;
+      return {...b, horses, coats, boardTypes};
+    }));
+    setEditHorse(null);
+  };
+
+  /* ── Delete horse ── */
+  const deleteHorse = () => {
+    setBoarders(bs => bs.map(b => {
+      if (b.id !== editHorse.boarderId) return b;
+      return {
+        ...b,
+        horses:     b.horses.filter((_,i)=>i!==editHorse.idx),
+        coats:      b.coats.filter((_,i)=>i!==editHorse.idx),
+        boardTypes: (b.boardTypes||[]).filter((_,i)=>i!==editHorse.idx),
+      };
+    }));
+    setEditHorse(null);
+  };
+
+  /* ── Add boarder ── */
+  const addBoarder = () => {
+    if (!newB.name.trim()) return;
+    const id = 'b' + Date.now();
+    setBoarders(bs => [...bs, {...newB, id, horses:[], coats:[], boardTypes:[], rate:0}]);
+    setNewB({name:'',phone:'',email:'',since:''});
+    setAddOpen(false);
+  };
+
+  return (
+    <div style={{display:'flex',height:'100vh',overflow:'hidden',background:'#EBE2CF'}}>
+      <Sidebar/>
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}>
+
+        {/* Header */}
+        <header style={{height:68,flexShrink:0,background:'rgba(247,242,231,.88)',backdropFilter:'blur(8px)',borderBottom:'1px solid #E0D5BC',display:'flex',alignItems:'center',gap:12,padding:'0 26px'}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'Spectral,serif',fontSize:22,fontWeight:600,color:'#23201C'}}>
+              {view==='profile'&&bp ? bp.name : 'Boarders'}
+            </div>
+            <div style={{fontSize:12,color:'#8A8170',marginTop:2}}>
+              {view==='profile'&&bp
+                ? `Boarding since ${bp.since} · ${bp.horses.length} horse${bp.horses.length!==1?'s':''}`
+                : `${boarders.length} active boarding clients`}
+            </div>
+          </div>
+
+          {view==='profile' && (
+            <button onClick={()=>setView('directory')} style={{display:'flex',alignItems:'center',gap:6,background:'#FBF6EC',border:'1px solid #E4D9C0',color:'#5a5345',borderRadius:10,padding:'9px 14px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>All boarders
+            </button>
+          )}
+          {view==='profile' && bp && (
+            <button onClick={()=>setEditBoarder({...bp})} style={{display:'flex',alignItems:'center',gap:6,background:'#FBF6EC',border:'1px solid #E4D9C0',color:'#5a5345',borderRadius:10,padding:'9px 14px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>Edit boarder
+            </button>
+          )}
+          <button onClick={()=>setAddOpen(true)} style={{display:'flex',alignItems:'center',gap:7,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:10,padding:'10px 16px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 4px 12px rgba(28,58,46,.25)'}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Add boarder
+          </button>
+        </header>
+
+        <main style={{flex:1,overflowY:'auto',padding:'22px 26px 48px'}}>
+          <div style={{maxWidth:1180,margin:'0 auto'}}>
+
+            {/* DIRECTORY */}
+            {view==='directory' && (
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16}}>
+                {boarders.map(b => (
+                  <div key={b.id} onClick={()=>openProfile(b.id)} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:18,cursor:'pointer',boxShadow:'0 1px 2px rgba(40,30,15,.04)',transition:'.18s'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:13,marginBottom:14}}>
+                      {Avatar
+                        ? <Avatar name={b.name} size="md"/>
+                        : <div style={{width:42,height:42,borderRadius:'50%',background:hc(b.name),color:'#fff',fontWeight:700,fontSize:15,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{ini(b.name)}</div>}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:16.5,fontWeight:600,color:'#23201C'}}>{b.name}</div>
+                        <div style={{fontSize:12.5,color:'#8A8170'}}>Since {b.since}</div>
+                      </div>
+                      <span style={{fontSize:11.5,fontWeight:700,color:'#3C7A57'}}>Paid up</span>
+                    </div>
+                    <div style={{height:1,background:'#F0E9D8',marginBottom:12}}/>
+                    <div style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'#5a5345',marginBottom:7}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a9081" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V9l4-3 3 2.5h3a3 3 0 0 1 3 3V21"/><path d="M5 13h6"/></svg>
+                      <span style={{fontWeight:600,color:'#3a342b'}}>{b.horses.length} horse{b.horses.length!==1?'s':''}:</span>
+                      <span style={{flex:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{b.horses.join(', ')||'—'}</span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'#5a5345'}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a9081" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 6 12 13 2 6"/><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+                      {b.email||'No email on file'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* PROFILE */}
+            {view==='profile' && bp && (
+              <div style={{display:'grid',gridTemplateColumns:'300px 1fr',gap:20,alignItems:'start'}}>
+
+                {/* Left card */}
+                <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                  <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:18,padding:'24px 22px',boxShadow:'0 1px 2px rgba(40,30,15,.04)',textAlign:'center'}}>
+                    {Avatar
+                      ? <div style={{marginBottom:14}}><Avatar name={bp.name} size="xl"/></div>
+                      : <div style={{width:72,height:72,borderRadius:'50%',background:hc(bp.name),color:'#fff',fontWeight:700,fontSize:24,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}>{ini(bp.name)}</div>}
+                    <h2 style={{fontFamily:'Spectral,serif',fontSize:22,fontWeight:600,color:'#23201C'}}>{bp.name}</h2>
+                    <p style={{fontSize:13,color:'#8A8170',marginTop:3}}>Boarding client since {bp.since}</p>
+                    <div style={{display:'flex',gap:9,marginTop:18}}>
+                      <button style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:7,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:11,padding:'11px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1Z"/></svg>Message
+                      </button>
+                      <button style={{width:44,border:'1px solid #E4D9C0',background:'#FBF6EC',borderRadius:11,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5a5345" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/></svg>
+                      </button>
+                    </div>
+                    <div style={{height:1,background:'#F0E9D8',margin:'18px 0'}}/>
+                    <div style={{textAlign:'left',display:'flex',flexDirection:'column',gap:10}}>
+                      {[['📞',bp.phone||'No phone on file'],['✉️',bp.email||'No email on file']].map(([ic,v])=>(
+                        <div key={ic} style={{display:'flex',alignItems:'center',gap:10,fontSize:13.5,color:'#5a5345'}}><span style={{flexShrink:0}}>{ic}</span>{v}</div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Billing summary */}
+                  <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'16px 18px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C',marginBottom:14}}>Billing</div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                      <span style={{fontSize:13,color:'#5a5345'}}>Monthly rate</span>
+                      <span style={{fontFamily:'Spectral,serif',fontSize:18,fontWeight:700,color:'#23201C'}}>${bp.rate}</span>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'#E5F0E7',border:'1px solid #c4dcc9',borderRadius:10}}>
+                      <span style={{fontSize:13,fontWeight:600,color:'#3C7A57'}}>Status</span>
+                      <span style={{fontSize:12.5,fontWeight:700,color:'#3C7A57'}}>✓ Paid up</span>
+                    </div>
+                    <a href="billing.html" style={{display:'block',textAlign:'center',marginTop:12,fontSize:12.5,fontWeight:600,color:'#3C7A57'}}>View full billing history →</a>
+                  </div>
+                </div>
+
+                {/* Right: horses */}
+                <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'18px 20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{display:'flex',alignItems:'center',marginBottom:16}}>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:18,fontWeight:600,color:'#23201C',flex:1}}>Horses</div>
+                    <button style={{display:'flex',alignItems:'center',gap:6,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:9,padding:'8px 14px',fontFamily:'inherit',fontSize:12.5,fontWeight:600,cursor:'pointer'}}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Add horse
+                    </button>
+                  </div>
+                  {bp.horses.length === 0
+                    ? <div style={{padding:'32px 0',textAlign:'center',color:'#b0a690',fontSize:14}}>No horses yet — click Add horse</div>
+                    : (
+                      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                        {bp.horses.map((h,i) => (
+                          <div key={h+i} onClick={()=>setEditHorse({boarderId:bp.id,idx:i,name:h,coat:bp.coats[i]||'Bay',boardType:(bp.boardTypes&&bp.boardTypes[i])||'Paddock board'})}
+                            style={{display:'flex',alignItems:'center',gap:14,padding:'12px 14px',border:'1px solid #EFE6D0',borderRadius:13,cursor:'pointer',transition:'.15s',background:'#fdfaf3'}}>
+                            <div style={{width:48,height:48,borderRadius:11,background:COAT[bp.coats[i]]||COAT.Bay,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Spectral,serif',fontSize:20,color:'rgba(255,255,255,.45)',fontWeight:700}}>{h[0]}</div>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:16,fontWeight:600,color:'#23201C'}}>{h}</div>
+                              <div style={{fontSize:12.5,color:'#8A8170'}}>{bp.coats[i]||'Bay'} · {(bp.boardTypes&&bp.boardTypes[i])||'Paddock board'}</div>
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:7}}>
+                              <span style={{fontSize:11.5,fontWeight:600,color:'#9a9081',background:'#F1EADA',padding:'4px 10px',borderRadius:20}}>Edit</span>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c2b79d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  }
+                </div>
+              </div>
+            )}
+
+          </div>
+        </main>
+      </div>
+
+      {/* ── Edit boarder modal ── */}
+      {editBoarder && (
+        <Modal title="Edit boarder" onClose={()=>setEditBoarder(null)} onSave={saveBoarder}>
+          <Field label="Full name"      value={editBoarder.name}  onChange={v=>setEditBoarder(b=>({...b,name:v}))}/>
+          <Field label="Phone"          value={editBoarder.phone} onChange={v=>setEditBoarder(b=>({...b,phone:v}))} type="tel"/>
+          <Field label="Email"          value={editBoarder.email} onChange={v=>setEditBoarder(b=>({...b,email:v}))} type="email"/>
+          <Field label="Boarding since" value={editBoarder.since} onChange={v=>setEditBoarder(b=>({...b,since:v}))}/>
+        </Modal>
+      )}
+
+      {/* ── Edit horse modal ── */}
+      {editHorse && (
+        <Modal title="Edit horse" onClose={()=>setEditHorse(null)} onSave={saveHorse} onDelete={deleteHorse}>
+          <Field label="Horse name" value={editHorse.name}      onChange={v=>setEditHorse(h=>({...h,name:v}))}/>
+          <Field label="Coat color" value={editHorse.coat}      onChange={v=>setEditHorse(h=>({...h,coat:v}))} opts={COATS}/>
+          <Field label="Board type" value={editHorse.boardType} onChange={v=>setEditHorse(h=>({...h,boardType:v}))} opts={BOARD_TYPES}/>
+        </Modal>
+      )}
+
+      {/* ── Add boarder modal ── */}
+      {addOpen && (
+        <Modal title="Add boarder" onClose={()=>setAddOpen(false)} onSave={addBoarder}>
+          <Field label="Full name"      value={newB.name}  onChange={v=>setNewB(b=>({...b,name:v}))}/>
+          <Field label="Phone"          value={newB.phone} onChange={v=>setNewB(b=>({...b,phone:v}))} type="tel"/>
+          <Field label="Email"          value={newB.email} onChange={v=>setNewB(b=>({...b,email:v}))} type="email"/>
+          <Field label="Boarding since" value={newB.since} onChange={v=>setNewB(b=>({...b,since:v}))}/>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

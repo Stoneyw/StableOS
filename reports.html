@@ -1,0 +1,315 @@
+<!-- @dsCard group="StableOS" viewport="1440x900" name="Reports" subtitle="Revenue trends, horse health summary, and facility occupancy analytics" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StableOS — Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#EBE2CF;-webkit-font-smoothing:antialiased;height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#cdbf9f;border-radius:8px;border:2.5px solid transparent;background-clip:content-box}
+</style>
+</head>
+<body><div id="root" style="height:100vh"></div>
+<script type="text/babel">
+const DS = window.StableOSDesignSystem_8c3955 || {};
+
+const NAV = [
+  {id:'dashboard',label:'Dashboard',ic:'M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6'},
+  {id:'horses',   label:'Horses',   ic:'M5 21V9l4-3 3 2.5h3a3 3 0 0 1 3 3V21M5 13h6M9 21v-5'},
+  {id:'boarders', label:'Boarders', ic:'M16 6.2a3 3 0 0 1 0 5.6M3.5 20a5.5 5.5 0 0 1 11 0'},
+  {id:'billing',  label:'Billing',  ic:'M2 5h20v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2ZM2 10h20'},
+  {id:'reports',  label:'Reports',  ic:'M3 12h4l2-5 3 10 2-7 2 2h5', active:true},
+  {id:'messages', label:'Messages', ic:'M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1Z'},
+];
+
+function SidebarIcon({ d }) {
+  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {d.split('M').filter(Boolean).map((seg,i) => <path key={i} d={'M'+seg}/>)}
+  </svg>;
+}
+
+const REVENUE = [
+  {m:'Jan',collected:4850,billed:5250},{m:'Feb',collected:5100,billed:5250},
+  {m:'Mar',collected:5250,billed:5250},{m:'Apr',collected:4800,billed:5250},
+  {m:'May',collected:3950,billed:5250},{m:'Jun',collected:2350,billed:5250},
+];
+const maxRev = 5500;
+
+const HEALTH = [
+  {horse:'Georgia',   coggins:'current',ewt:'current',  rabies:'current',  flu:'current'},
+  {horse:'Sophie',    coggins:'current',ewt:'due',      rabies:'current',  flu:'due'},
+  {horse:'Alvin',     coggins:'current',ewt:'due',      rabies:'current',  flu:'due'},
+  {horse:'Foxy',      coggins:'overdue',ewt:'current',  rabies:'overdue',  flu:'current'},
+  {horse:'Rio',       coggins:'current',ewt:'current',  rabies:'current',  flu:'current'},
+  {horse:'Pretzel',   coggins:'current',ewt:'current',  rabies:'current',  flu:'due'},
+  {horse:'Amali',     coggins:'current',ewt:'current',  rabies:'current',  flu:'due'},
+  {horse:'Journey',   coggins:'current',ewt:'current',  rabies:'current',  flu:'current'},
+  {horse:'Santana',   coggins:'current',ewt:'due',      rabies:'current',  flu:'current'},
+  {horse:'Malibu',    coggins:'current',ewt:'current',  rabies:'due',      flu:'current'},
+  {horse:'Jig',       coggins:'current',ewt:'current',  rabies:'current',  flu:'current'},
+  {horse:'Diamond',   coggins:'current',ewt:'overdue',  rabies:'current',  flu:'current'},
+];
+
+const statusDot = s => ({current:'#3C7A57',due:'#C99A4A',overdue:'#B4502E'})[s]||'#cdbf9f';
+const statusBg  = s => ({current:'#E5F0E7',due:'#F6ECD2',overdue:'#FBEAE2'})[s]||'#F1EADA';
+const statusCl  = s => ({current:'#3C7A57',due:'#9c7026',overdue:'#B4502E'})[s]||'#5a5345';
+const statusLbl = s => ({current:'Current',due:'Due soon',overdue:'Overdue'})[s]||s;
+
+const allStatuses = HEALTH.flatMap(h => [h.coggins,h.ewt,h.rabies,h.flu]);
+const healthCounts = {
+  current: allStatuses.filter(s=>s==='current').length,
+  due:     allStatuses.filter(s=>s==='due').length,
+  overdue: allStatuses.filter(s=>s==='overdue').length,
+};
+
+const STALLS    = [{n:'Stall 1',horse:'Jig',filled:true},{n:'Stall 2',horse:null,filled:false},{n:'Stall 3',horse:'Diamond',filled:true},{n:'Stall 4',horse:'Rohze',filled:true},{n:'Stall 5',horse:'Tess',filled:true},{n:'Stall 6',horse:null,filled:false},{n:'Stall 7',horse:'Remy',filled:true},{n:'Stall 8',horse:'Ruby',filled:true}];
+const PADDOCKS_FILLED = 12;
+const PADDOCKS_TOTAL  = 15;
+
+function App() {
+  const [section, setSection] = React.useState('financial');
+
+  const ytd = REVENUE.reduce((s,r) => s+r.collected, 0);
+  const outstanding = REVENUE.reduce((s,r) => s+(r.billed-r.collected), 0);
+  const avgPerBoarder = Math.round(ytd / 10);
+
+  return (
+    <div style={{display:'flex',height:'100vh',overflow:'hidden',background:'#EBE2CF'}}>
+      {/* SIDEBAR */}
+      <aside style={{width:248,flexShrink:0,background:'linear-gradient(180deg,#1C3A2E,#15291F)',color:'#E9E2D0',display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'20px 18px 14px',display:'flex',alignItems:'center',gap:11,borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+          <div style={{width:38,height:38,borderRadius:10,background:'linear-gradient(150deg,#C99A4A,#9c7026)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C3A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg>
+          </div>
+          <div>
+            <div style={{fontFamily:'Spectral,serif',fontWeight:700,fontSize:15,lineHeight:1}}>The Winners Stable</div>
+            <div style={{fontSize:10.5,color:'#9DBCA8',letterSpacing:1.3,textTransform:'uppercase',marginTop:4}}>Georgetown, TX</div>
+          </div>
+        </div>
+        <nav style={{flex:1,padding:'14px 10px',display:'flex',flexDirection:'column',gap:3}}>
+          {NAV.map(n => (
+            <div key={n.id} style={{display:'flex',alignItems:'center',gap:11,borderRadius:10,padding:'10px 12px',fontSize:13.5,fontWeight:n.active?600:500,background:n.active?'rgba(201,154,74,.16)':'transparent',color:n.active?'#F3E7CB':'#BBD0C2',boxShadow:n.active?'inset 3px 0 0 #C99A4A':'none',cursor:'pointer'}}>
+              <span style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><SidebarIcon d={n.ic}/></span>
+              <span>{n.label}</span>
+            </div>
+          ))}
+        </nav>
+        <div style={{padding:'12px 14px',borderTop:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:10}}>
+          <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(150deg,#3C7A57,#2a5b3e)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,color:'#fff',flexShrink:0}}>CE</div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13.5,fontWeight:600}}>Chris & Eileen</div><div style={{fontSize:11.5,color:'#9DBCA8'}}>Manager</div></div>
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}>
+        <header style={{height:68,flexShrink:0,background:'rgba(247,242,231,.88)',backdropFilter:'blur(8px)',borderBottom:'1px solid #E0D5BC',display:'flex',alignItems:'center',gap:16,padding:'0 26px'}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'Spectral,serif',fontSize:22,fontWeight:600,color:'#23201C'}}>Reports</div>
+            <div style={{fontSize:12,color:'#8A8170',marginTop:2}}>Jan – Jun 2026 · The Winners Stable</div>
+          </div>
+          <div style={{display:'flex',background:'#fff',border:'1px solid #E4D9C0',borderRadius:10,padding:4,gap:3}}>
+            {[['financial','Financial'],['health','Health'],['occupancy','Occupancy']].map(([id,lbl]) => (
+              <button key={id} onClick={()=>setSection(id)} style={{padding:'7px 16px',borderRadius:7,border:'none',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',background:section===id?'#1C3A2E':'transparent',color:section===id?'#F1EBDB':'#7c7363',transition:'.15s'}}>{lbl}</button>
+            ))}
+          </div>
+          <button style={{display:'flex',alignItems:'center',gap:7,background:'#FBF6EC',border:'1px solid #E4D9C0',color:'#5a5345',borderRadius:10,padding:'9px 15px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9c7026" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Export
+          </button>
+        </header>
+
+        <main style={{flex:1,overflowY:'auto',padding:'22px 26px 48px'}}>
+          <div style={{maxWidth:1180,margin:'0 auto'}}>
+
+            {/* ─── FINANCIAL ─── */}
+            {section==='financial' && <>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:22}}>
+                {[
+                  ['YTD Revenue','$'+ytd.toLocaleString(),'Jan–Jun 2026','#3C7A57'],
+                  ['Monthly Rate','$5,250','All boarders combined','#9c7026'],
+                  ['Outstanding','$'+outstanding.toLocaleString(),'Across all months','#B4502E'],
+                  ['Avg per boarder','$'+avgPerBoarder.toLocaleString(),'Per month','#5a6b8c'],
+                ].map(([l,v,s,c]) => (
+                  <div key={l} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:14,padding:'16px 18px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                    <div style={{fontSize:11.5,fontWeight:600,color:'#8A8170',marginBottom:8}}>{l}</div>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:30,fontWeight:700,color:c,lineHeight:1}}>{v}</div>
+                    <div style={{fontSize:11.5,color:'#8A8170',marginTop:5}}>{s}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr',gap:18,alignItems:'start'}}>
+                {/* Bar chart */}
+                <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'20px 22px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:18,fontWeight:600,color:'#23201C'}}>Monthly revenue</div>
+                    <div style={{display:'flex',gap:12,fontSize:12,color:'#8A8170',fontWeight:500}}>
+                      <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:10,height:10,background:'#3C7A57',borderRadius:3}}></span>Collected</span>
+                      <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:10,height:10,background:'#E5F0E7',border:'1px solid #c4dcc9',borderRadius:3}}></span>Billed</span>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'flex-end',gap:16,height:180}}>
+                    {REVENUE.map((r,i) => (
+                      <div key={r.m} style={{flex:1,display:'flex',flexDirection:'column',gap:4,alignItems:'center'}}>
+                        <div style={{fontSize:11,fontWeight:700,color:'#3C7A57',marginBottom:4}}>${(r.collected/1000).toFixed(1)}k</div>
+                        <div style={{width:'100%',position:'relative',display:'flex',flexDirection:'column',justifyContent:'flex-end',height:140}}>
+                          {/* Billed bar (ghost) */}
+                          <div style={{position:'absolute',bottom:0,left:0,right:0,background:'#E5F0E7',border:'1px solid #c4dcc9',borderRadius:'5px 5px 0 0',height:Math.round(r.billed/maxRev*140)}}/>
+                          {/* Collected bar */}
+                          <div style={{position:'absolute',bottom:0,left:0,right:0,background:i===5?'#1C3A2E':'#3C7A57',borderRadius:'5px 5px 0 0',height:Math.round(r.collected/maxRev*140),transition:'.4s'}}/>
+                        </div>
+                        <div style={{fontSize:11,fontWeight:700,color:i===5?'#1C3A2E':'#9a9081',marginTop:4}}>{r.m}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Monthly breakdown table */}
+                <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,overflow:'hidden',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{padding:'16px 18px 12px',borderBottom:'1px solid #F0E9D8'}}>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C'}}>Month summary</div>
+                  </div>
+                  {REVENUE.map((r,i) => {
+                    const pct = Math.round(r.collected/r.billed*100);
+                    return (
+                      <div key={r.m} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 18px',borderBottom:i<5?'1px solid #F4EEDE':'none'}}>
+                        <div style={{width:44,fontSize:13,fontWeight:700,color:i===5?'#1C3A2E':'#5a5345'}}>{r.m} '26</div>
+                        <div style={{flex:1}}>
+                          <div style={{height:6,background:'#EDE5D2',borderRadius:4,overflow:'hidden'}}>
+                            <div style={{height:'100%',width:pct+'%',background:pct===100?'#3C7A57':pct>60?'#9c7026':'#B4502E',borderRadius:4}}/>
+                          </div>
+                        </div>
+                        <div style={{width:40,textAlign:'right',fontSize:12,fontWeight:700,color:pct===100?'#3C7A57':pct>60?'#9c7026':'#B4502E'}}>{pct}%</div>
+                        <div style={{width:56,textAlign:'right',fontFamily:'Spectral,serif',fontSize:14,fontWeight:600,color:'#23201C'}}>${(r.collected/1000).toFixed(1)}k</div>
+                      </div>
+                    );
+                  })}
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 18px',background:'#FBF6EC',borderTop:'1px solid #EFE6D0'}}>
+                    <div style={{fontSize:12,fontWeight:700,color:'#5a5345'}}>YTD total</div>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:18,fontWeight:700,color:'#3C7A57'}}>${(ytd/1000).toFixed(1)}k</div>
+                  </div>
+                </div>
+              </div>
+            </>}
+
+            {/* ─── HEALTH ─── */}
+            {section==='health' && <>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:22}}>
+                {[['current',healthCounts.current,'Vaccination records'],['due',healthCounts.due,'Due within 30 days'],['overdue',healthCounts.overdue,'Overdue — action needed']].map(([s,n,d]) => (
+                  <div key={s} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:14,padding:'16px 18px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                      <span style={{width:9,height:9,borderRadius:'50%',background:statusDot(s)}}/>
+                      <span style={{fontSize:12,fontWeight:700,color:statusCl(s),textTransform:'uppercase',letterSpacing:.5}}>{statusLbl(s)}</span>
+                    </div>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:34,fontWeight:700,color:statusCl(s),lineHeight:1}}>{n}</div>
+                    <div style={{fontSize:12,color:'#8A8170',marginTop:5}}>{d}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,overflow:'hidden',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                <div style={{fontFamily:'Spectral,serif',fontSize:18,fontWeight:600,color:'#23201C',padding:'18px 20px 12px'}}>Vaccination status matrix</div>
+                <div style={{display:'grid',gridTemplateColumns:'1.5fr 1fr 1fr 1fr 1fr',gap:8,padding:'10px 20px',background:'#FBF6EC',borderTop:'1px solid #EFE6D0',borderBottom:'1px solid #EFE6D0',fontSize:10.5,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.4}}>
+                  <div>Horse</div><div style={{textAlign:'center'}}>Coggins</div><div style={{textAlign:'center'}}>EWT/WNV</div><div style={{textAlign:'center'}}>Rabies</div><div style={{textAlign:'center'}}>Flu/Rhino</div>
+                </div>
+                {HEALTH.map((h,i) => (
+                  <div key={h.horse} style={{display:'grid',gridTemplateColumns:'1.5fr 1fr 1fr 1fr 1fr',gap:8,padding:'11px 20px',borderBottom:i<HEALTH.length-1?'1px solid #F4EEDE':'none',alignItems:'center'}}>
+                    <div style={{fontSize:14,fontWeight:600,color:'#2f2a23'}}>{h.horse}</div>
+                    {[h.coggins,h.ewt,h.rabies,h.flu].map((s,j) => (
+                      <div key={j} style={{display:'flex',justifyContent:'center'}}>
+                        <span style={{fontSize:10.5,fontWeight:700,color:statusCl(s),background:statusBg(s),border:`1px solid ${statusDot(s)}30`,padding:'3px 9px',borderRadius:20}}>{statusLbl(s)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </>}
+
+            {/* ─── OCCUPANCY ─── */}
+            {section==='occupancy' && <>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:22}}>
+                {[
+                  ['Paddocks',PADDOCKS_FILLED+'/'+PADDOCKS_TOTAL,'Occupied',Math.round(PADDOCKS_FILLED/PADDOCKS_TOTAL*100)+'%','#3C7A57'],
+                  ['Stalls',STALLS.filter(s=>s.filled).length+'/8','Occupied',Math.round(STALLS.filter(s=>s.filled).length/8*100)+'%','#9c7026'],
+                  ['Total horses','18','Paddock & stall','','#23201C'],
+                  ['Boarders','10','Active clients','','#5a6b8c'],
+                ].map(([l,v,s,p,c]) => (
+                  <div key={l} style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:14,padding:'16px 18px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                    <div style={{fontSize:11.5,fontWeight:600,color:'#8A8170',marginBottom:8}}>{l}</div>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:30,fontWeight:700,color:c,lineHeight:1}}>{v}</div>
+                    <div style={{fontSize:11.5,color:'#8A8170',marginTop:5}}>{p && <span style={{fontWeight:700,color:c,marginRight:4}}>{p}</span>}{s}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18,alignItems:'start'}}>
+                {/* Stalls */}
+                <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'18px 20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:16}}>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C',flex:1}}>Barn stalls</div>
+                    <span style={{fontSize:11.5,fontWeight:700,color:'#3C7A57',background:'#E5F0E7',border:'1px solid #c4dcc9',padding:'3px 10px',borderRadius:20}}>{STALLS.filter(s=>s.filled).length}/8 filled</span>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:9}}>
+                    {STALLS.map(s => (
+                      <div key={s.n} style={{display:'flex',alignItems:'center',gap:10,padding:'11px 13px',border:`1px solid ${s.filled?'#E8DFCC':'#F0E9D8'}`,borderRadius:12,background:s.filled?'#fff':'#FAFAF6'}}>
+                        <div style={{width:30,height:30,borderRadius:8,background:s.filled?'linear-gradient(150deg,#6e4524,#39230f)':'#EDE5D2',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Spectral,serif',fontSize:12,color:'rgba(255,255,255,.55)',fontWeight:600}}>{s.filled?s.horse[0]:'—'}</div>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:9.5,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5}}>{s.n}</div>
+                          <div style={{fontSize:13,fontWeight:s.filled?600:400,color:s.filled?'#2f2a23':'#9a9081',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{s.horse||'Empty'}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Paddocks summary */}
+                <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,padding:'18px 20px',boxShadow:'0 1px 2px rgba(40,30,15,.04)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:16}}>
+                    <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:'#23201C',flex:1}}>Paddocks</div>
+                    <span style={{fontSize:11.5,fontWeight:700,color:'#9c7026',background:'#F6ECD2',border:'1px solid #e6d3a4',padding:'3px 10px',borderRadius:20}}>{PADDOCKS_FILLED}/{PADDOCKS_TOTAL} filled</span>
+                  </div>
+                  {/* Capacity bar */}
+                  <div style={{marginBottom:18}}>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#8A8170',marginBottom:6}}>
+                      <span>Capacity utilisation</span><span style={{fontWeight:700,color:'#9c7026'}}>{Math.round(PADDOCKS_FILLED/PADDOCKS_TOTAL*100)}%</span>
+                    </div>
+                    <div style={{height:10,background:'#EDE5D2',borderRadius:6,overflow:'hidden'}}>
+                      <div style={{height:'100%',width:Math.round(PADDOCKS_FILLED/PADDOCKS_TOTAL*100)+'%',background:'linear-gradient(90deg,#9c7026,#C99A4A)',borderRadius:6}}/>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#9a9081',marginTop:4}}><span>{PADDOCKS_FILLED} paddocks occupied</span><span>{PADDOCKS_TOTAL-PADDOCKS_FILLED} available</span></div>
+                  </div>
+                  {/* Board type breakdown */}
+                  <div style={{fontFamily:'Spectral,serif',fontSize:16,fontWeight:600,color:'#23201C',marginBottom:12}}>Board type breakdown</div>
+                  {[['Paddock board',12,'#C99A4A'],['Stall board',6,'#1C3A2E'],['Pasture (3 open)',3,'#3C7A57']].map(([l,n,c]) => (
+                    <div key={l} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                      <div style={{width:10,height:10,borderRadius:3,background:c,flexShrink:0}}/>
+                      <div style={{flex:1,fontSize:13.5,color:'#5a5345'}}>{l}</div>
+                      <div style={{fontFamily:'Spectral,serif',fontSize:17,fontWeight:600,color:c}}>{n}</div>
+                    </div>
+                  ))}
+                  <div style={{height:1,background:'#F0E9D8',margin:'14px 0 12px'}}/>
+                  <div style={{padding:'11px 14px',background:'#FBF0D8',border:'1px solid #e6d3a4',borderRadius:11,display:'flex',alignItems:'center',gap:9}}>
+                    <span style={{fontSize:16}}>📋</span>
+                    <div style={{fontSize:12.5,color:'#7a5200'}}>3 paddock slots available — <span style={{fontWeight:600}}>add a boarder to fill them</span></div>
+                  </div>
+                </div>
+              </div>
+            </>}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!-- @dsCard group="StableOS" viewport="1440x900" name="Arena Calendar" subtitle="Day-view arena schedule with color-coded events, time grid, and booking" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StableOS — Arena Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#EBE2CF;-webkit-font-smoothing:antialiased;height:100vh;overflow:hidden}a{text-decoration:none;color:inherit}::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#cdbf9f;border-radius:8px;border:2.5px solid transparent;background-clip:content-box}</style>
+</head>
+<body><div id="root" style="height:100vh"></div>
+<script type="text/babel">
+const DAY_START=6, DAY_END=20, PX_H=58;
+const fmt=h=>{const ap=h>=12?'PM':'AM';let hh=h%12;if(hh===0)hh=12;const mn=Math.round((h-Math.floor(h))*60);return `${hh}${mn?':'+String(mn).padStart(2,'0'):''}${' '+ap}`;};
+
+const ARENAS=['Covered Arena','Outdoor Arena','Round Pen 1','Round Pen 2'];
+const ARENA_INFO={Covered:'Indoor · 80×200','Outdoor Arena':'Sand · 100×220','Round Pen 1':'60 ft','Round Pen 2':'60 ft'};
+const TYPE_COLOR={'Lesson':'#3C7A57','Open ride':'#9c7026','Groundwork':'#7A4A2B','Training':'#3C7A57','Blocked':'#B4502E','Other':'#5a6b8c'};
+
+const EVENTS_INIT=[
+  {id:'e1',s:7,   e:8,    arena:'Covered Arena', title:'Private lesson — Maverick', who:'Sam Okafor · Tom Bradley', type:'Lesson',    color:'#3C7A57'},
+  {id:'e2',s:9,   e:10.5, arena:'Round Pen 1',   title:'Groundwork session',        who:'Angela Crews · Shadow',    type:'Groundwork', color:'#7A4A2B'},
+  {id:'e3',s:11.5,e:12.5, arena:'Covered Arena', title:'Farrier — 4 horses',        who:'Cody (farrier)',           type:'Blocked',    color:'#B4502E'},
+  {id:'e4',s:14,  e:15.5, arena:'Covered Arena', title:'Training ride — Diesel',    who:'Sam Okafor · Derek Lin',   type:'Training',   color:'#3C7A57'},
+  {id:'e5',s:16.5,e:18,   arena:'Outdoor Arena', title:'Group lesson (3 riders)',   who:'Sam Okafor',               type:'Lesson',     color:'#3C7A57'},
+  {id:'e6',s:9.5, e:11,   arena:'Round Pen 1',   title:'Colt starting — Juniper',  who:'Sam Okafor',               type:'Groundwork', color:'#7A4A2B'},
+  {id:'e7',s:8,   e:9,    arena:'Outdoor Arena', title:'Boarder ride',              who:'Marisol Vega · Reno',      type:'Open ride',  color:'#9c7026'},
+];
+
+const NAV=[{href:'app.html',id:'dashboard',label:'Dashboard'},{href:'app.html',id:'horses',label:'Horses'},{href:'boarders.html',id:'boarders',label:'Boarders'},{href:'app.html',id:'feeding',label:'Feeding Board'},{href:'tasks.html',id:'tasks',label:'Daily Tasks',badge:'6'},{href:'medical.html',id:'medical',label:'Medical Records'},{href:'calendar.html',id:'calendar',label:'Arena Calendar',active:true},{href:'facility.html',id:'facility',label:'Facility Map'},{href:'messages.html',id:'messages',label:'Messages',badge:'2'},{href:'billing.html',id:'billing',label:'Billing'},{href:'reports.html',id:'reports',label:'Reports'}];
+const ICONS={dashboard:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>',horses:'<path d="M5 21V9l4-3 3 2.5h3a3 3 0 0 1 3 3V21"/><path d="M5 13h6"/>',boarders:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/>',feeding:'<path d="M5 8h14l-1.4 11.2a2 2 0 0 1-2 1.8H8.4a2 2 0 0 1-2-1.8Z"/>',tasks:'<path d="M9 11l2 2 4-4"/><rect x="3.5" y="4.5" width="17" height="16" rx="3"/>',medical:'<path d="M3 12h4l2-5 3 10 2-7 2 2h5"/>',calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',facility:'<path d="m9 4 6 2 5-2v14l-5 2-6-2-5 2V6Z"/>',messages:'<path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1Z"/>',billing:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',reports:'<path d="M3 12h4l2-5 3 10 2-7 2 2h5"/>'};
+
+function Sidebar(){return(<aside style={{width:248,flexShrink:0,background:'linear-gradient(180deg,#1C3A2E,#15291F)',color:'#E9E2D0',display:'flex',flexDirection:'column'}}><div style={{padding:'20px 18px 14px',display:'flex',alignItems:'center',gap:11,borderBottom:'1px solid rgba(255,255,255,.07)'}}><div style={{width:38,height:38,borderRadius:10,background:'linear-gradient(150deg,#C99A4A,#9c7026)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C3A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V8l4-3 4 3v3h3a3 3 0 0 1 3 3v7"/><path d="M5 14h6"/><path d="M9 21v-4"/></svg></div><div><div style={{fontFamily:'Spectral,serif',fontWeight:700,fontSize:15,lineHeight:1}}>The Winners Stable</div><div style={{fontSize:10.5,color:'#9DBCA8',letterSpacing:1.3,textTransform:'uppercase',marginTop:4}}>Georgetown, TX</div></div></div><nav style={{flex:1,overflowY:'auto',padding:'14px 10px',display:'flex',flexDirection:'column',gap:3}}>{NAV.map(n=><a key={n.id} href={n.href} style={{display:'flex',alignItems:'center',gap:11,borderRadius:10,padding:'10px 12px',fontSize:13.5,fontWeight:n.active?600:500,background:n.active?'rgba(201,154,74,.16)':'transparent',color:n.active?'#F3E7CB':'#BBD0C2',boxShadow:n.active?'inset 3px 0 0 #C99A4A':'none',textDecoration:'none',transition:'.15s'}}><span style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:ICONS[n.id]||''}}/></span><span style={{flex:1}}>{n.label}</span>{n.badge&&<span style={{background:'#B4502E',color:'#fff',fontSize:10.5,fontWeight:700,minWidth:18,height:18,padding:'0 5px',borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center'}}>{n.badge}</span>}</a>)}</nav><div style={{padding:'12px 14px',borderTop:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:10}}><div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(150deg,#3C7A57,#2a5b3e)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,color:'#fff',flexShrink:0}}>CE</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:13.5,fontWeight:600}}>Chris & Eileen</div><div style={{fontSize:11.5,color:'#9DBCA8'}}>Manager</div></div></div></aside>);}
+
+function App() {
+  const [events,     setEvents]     = React.useState(EVENTS_INIT);
+  const [modal,      setModal]      = React.useState(false);
+  const [draft,      setDraft]      = React.useState({title:'',who:'',arena:'Covered Arena',type:'Lesson',sH:'9',sM:'00',eH:'10',eM:'00'});
+  const [editEvent,  setEditEvent]  = React.useState(null);   // event being edited
+  const [offset,     setOffset]     = React.useState(0);
+
+  const dateLabel = (() => {
+    const d=new Date(2026,5,11); d.setDate(d.getDate()+offset);
+    return d.toLocaleDateString('en-US',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+  })();
+
+  const EMPTY_DRAFT = {title:'',who:'',arena:'Covered Arena',type:'Lesson',sH:'9',sM:'00',eH:'10',eM:'00'};
+
+  const save = () => {
+    const s=parseFloat(draft.sH)+parseFloat(draft.sM)/60;
+    const e=parseFloat(draft.eH)+parseFloat(draft.eM)/60;
+    if(!draft.title.trim()||e<=s) return;
+    setEvents(ev=>[...ev,{id:'e_'+Date.now(),s,e,arena:draft.arena,title:draft.title,who:draft.who,type:draft.type,color:TYPE_COLOR[draft.type]||'#9c7026'}]);
+    setDraft(EMPTY_DRAFT);
+    setModal(false);
+  };
+
+  const openEdit = ev => {
+    const sH = Math.floor(ev.s), sM = Math.round((ev.s-sH)*60);
+    const eH = Math.floor(ev.e), eM = Math.round((ev.e-eH)*60);
+    setEditEvent({...ev, sH:String(sH), sM:String(sM).padStart(2,'0'), eH:String(eH), eM:String(eM).padStart(2,'0')});
+  };
+
+  const saveEdit = () => {
+    const s=parseFloat(editEvent.sH)+parseFloat(editEvent.sM)/60;
+    const e=parseFloat(editEvent.eH)+parseFloat(editEvent.eM)/60;
+    if(!editEvent.title.trim()||e<=s) return;
+    setEvents(ev=>ev.map(x=>x.id===editEvent.id
+      ? {...x,s,e,arena:editEvent.arena,title:editEvent.title,who:editEvent.who,type:editEvent.type,color:TYPE_COLOR[editEvent.type]||'#9c7026'}
+      : x));
+    setEditEvent(null);
+  };
+
+  const delEdit = () => { setEvents(ev=>ev.filter(x=>x.id!==editEvent.id)); setEditEvent(null); };
+
+  const gridH = (DAY_END-DAY_START)*PX_H;
+  const hours = Array.from({length:DAY_END-DAY_START},(_,i)=>DAY_START+i);
+
+  return (
+    <div style={{display:'flex',height:'100vh',overflow:'hidden',background:'#EBE2CF'}}>
+      <Sidebar/>
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}>
+        <header style={{height:68,flexShrink:0,background:'rgba(247,242,231,.88)',backdropFilter:'blur(8px)',borderBottom:'1px solid #E0D5BC',display:'flex',alignItems:'center',gap:12,padding:'0 26px',flexWrap:'wrap'}}>
+          <div style={{display:'flex',alignItems:'center',gap:6,background:'#fff',border:'1px solid #E4D9C0',borderRadius:11,padding:4}}>
+            <button onClick={()=>setOffset(o=>o-1)} style={{width:30,height:30,border:'none',background:'none',borderRadius:7,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a5345" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+            <div style={{fontFamily:'Spectral,serif',fontSize:15,fontWeight:600,color:'#23201C',padding:'0 8px',minWidth:220,textAlign:'center'}}>{dateLabel}</div>
+            <button onClick={()=>setOffset(o=>o+1)} style={{width:30,height:30,border:'none',background:'none',borderRadius:7,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a5345" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+          </div>
+          <div style={{display:'flex',gap:10,alignItems:'center',fontSize:12.5,color:'#8A8170',flexWrap:'wrap'}}>
+            {Object.entries(TYPE_COLOR).map(([k,c])=><span key={k} style={{display:'flex',alignItems:'center',gap:5,fontWeight:600}}><span style={{width:9,height:9,borderRadius:3,background:c}}/>{k}</span>)}
+          </div>
+          <div style={{flex:1}}/>
+          <button onClick={()=>setModal(true)} style={{display:'flex',alignItems:'center',gap:7,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:10,padding:'10px 16px',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:'0 4px 12px rgba(28,58,46,.25)'}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Book arena
+          </button>
+        </header>
+
+        <div style={{flex:1,overflow:'auto',padding:'16px 26px 24px'}}>
+          <div style={{background:'#fff',border:'1px solid #E8DFCC',borderRadius:16,overflow:'hidden',boxShadow:'0 1px 2px rgba(40,30,15,.04)',minWidth:700}}>
+            {/* Arena headers */}
+            <div style={{display:'grid',gridTemplateColumns:`62px repeat(${ARENAS.length},1fr)`,borderBottom:'1px solid #EFE6D0'}}>
+              <div style={{background:'#FBF6EC'}}/>
+              {ARENAS.map(a=><div key={a} style={{padding:'13px 14px',textAlign:'center',borderLeft:'1px solid #F0E9D8',background:'#FBF6EC'}}>
+                <div style={{fontSize:14,fontWeight:700,color:'#23201C'}}>{a}</div>
+                <div style={{fontSize:11,color:'#9a9081',marginTop:2}}>{ARENA_INFO[a]||''}</div>
+              </div>)}
+            </div>
+            {/* Time grid */}
+            <div style={{display:'grid',gridTemplateColumns:`62px repeat(${ARENAS.length},1fr)`,position:'relative'}}>
+              {/* Hour gutter */}
+              <div style={{position:'relative',height:gridH,background:'#FBF6EC'}}>
+                {hours.map(h=><div key={h} style={{position:'absolute',top:(h-DAY_START)*PX_H,right:8,fontSize:11,fontWeight:600,color:'#a9a08f',transform:'translateY(-7px)',whiteSpace:'nowrap'}}>{fmt(h)}</div>)}
+              </div>
+              {/* Arena columns */}
+              {ARENAS.map(a=>(
+                <div key={a} style={{position:'relative',height:gridH,borderLeft:'1px solid #F0E9D8',background:`repeating-linear-gradient(180deg,transparent 0,transparent ${PX_H-1}px,#F4EEDE ${PX_H-1}px,#F4EEDE ${PX_H}px)`}}>
+                  {events.filter(e=>e.arena===a).map(e=>(
+                    <div key={e.id} onClick={()=>openEdit(e)} style={{position:'absolute',left:6,right:6,top:(e.s-DAY_START)*PX_H+2,height:Math.max((e.e-e.s)*PX_H-4,24),background:'#fff',border:'1px solid #E8DFCC',borderLeft:`4px solid ${e.color}`,borderRadius:9,padding:'7px 10px',overflow:'hidden',boxShadow:'0 2px 6px rgba(40,30,15,.07)',cursor:'pointer',transition:'.12s'}}>
+                      <div style={{fontSize:10.5,fontWeight:700,color:e.color}}>{fmt(e.s)} – {fmt(e.e)}</div>
+                      <div style={{fontSize:12.5,fontWeight:600,color:'#2f2a23',lineHeight:1.25,marginTop:2}}>{e.title}</div>
+                      <div style={{fontSize:11,color:'#9a9081',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{e.who}</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Edit event modal ── */}
+      {editEvent&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:400,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={()=>setEditEvent(null)}>
+          <div style={{background:'#fff',borderRadius:18,padding:26,width:'100%',maxWidth:440,boxShadow:'0 24px 60px rgba(0,0,0,.3)',maxHeight:'90vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',alignItems:'center',marginBottom:22}}>
+              <div style={{fontFamily:'Spectral,serif',fontSize:20,fontWeight:600,color:'#23201C',flex:1}}>Edit booking</div>
+              <button onClick={()=>setEditEvent(null)} style={{width:32,height:32,borderRadius:8,border:'1px solid #E4D9C0',background:'#FBF6EC',color:'#5a5345',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>×</button>
+            </div>
+            {[['Event title','title','text'],['Rider / trainer','who','text']].map(([l,k,t])=>(
+              <div key={k} style={{marginBottom:13}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{l}</div>
+                <input type={t} value={editEvent[k]} onChange={e=>setEditEvent(d=>({...d,[k]:e.target.value}))} style={{width:'100%',padding:'9px 12px',border:'1.5px solid #C99A4A',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#FFFDF7',color:'#2f2a23'}}/>
+              </div>
+            ))}
+            <div style={{marginBottom:13}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Arena</div>
+              <select value={editEvent.arena} onChange={e=>setEditEvent(d=>({...d,arena:e.target.value}))} style={{width:'100%',padding:'9px 12px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                {ARENAS.map(a=><option key={a}>{a}</option>)}
+              </select>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:13}}>
+              {[['Start time','sH','sM'],['End time','eH','eM']].map(([lbl,hk,mk])=>(
+                <div key={lbl}>
+                  <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{lbl}</div>
+                  <div style={{display:'flex',gap:6}}>
+                    <select value={editEvent[hk]} onChange={e=>setEditEvent(d=>({...d,[hk]:e.target.value}))} style={{flex:1,padding:'9px 8px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                      {Array.from({length:14},(_,i)=>i+6).map(h=><option key={h} value={h}>{h<=12?h:h-12}{h<12?'am':h===12?'pm':'pm'}</option>)}
+                    </select>
+                    <select value={editEvent[mk]} onChange={e=>setEditEvent(d=>({...d,[mk]:e.target.value}))} style={{width:60,padding:'9px 6px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                      {['00','30'].map(m=><option key={m} value={m}>:{m}</option>)}
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginBottom:22}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Event type</div>
+              <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
+                {Object.entries(TYPE_COLOR).map(([t,c])=>(
+                  <button key={t} onClick={()=>setEditEvent(d=>({...d,type:t}))} style={{padding:'6px 13px',borderRadius:20,border:`1.5px solid ${editEvent.type===t?c:'#E4D9C0'}`,background:editEvent.type===t?c+'18':'transparent',color:editEvent.type===t?c:'#7c7363',fontSize:12.5,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:9}}>
+              <button onClick={delEdit} style={{padding:'11px 16px',background:'#fff',color:'#B4502E',border:'1.5px solid #f0cfc7',borderRadius:11,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete</button>
+              <div style={{flex:1}}/>
+              <button onClick={()=>setEditEvent(null)} style={{padding:'11px 18px',background:'#FBF6EC',color:'#5a5345',border:'1px solid #E4D9C0',borderRadius:11,fontFamily:'inherit',fontSize:13,cursor:'pointer'}}>Cancel</button>
+              <button onClick={saveEdit} style={{padding:'11px 20px',background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:11,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Save changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Book new event modal ── */}
+      {modal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:400,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={()=>setModal(false)}>
+          <div style={{background:'#fff',borderRadius:18,padding:26,width:'100%',maxWidth:440,boxShadow:'0 24px 60px rgba(0,0,0,.3)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',alignItems:'center',marginBottom:22}}>
+              <div style={{fontFamily:'Spectral,serif',fontSize:20,fontWeight:600,color:'#23201C',flex:1}}>Book arena</div>
+              <button onClick={()=>setModal(false)} style={{width:32,height:32,borderRadius:8,border:'1px solid #E4D9C0',background:'#FBF6EC',color:'#5a5345',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontFamily:'inherit'}}>×</button>
+            </div>
+            {[['Event title','title','text'],['Rider / trainer','who','text']].map(([l,k,t])=>(
+              <div key={k} style={{marginBottom:13}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{l}</div>
+                <input type={t} value={draft[k]} onChange={e=>setDraft(d=>({...d,[k]:e.target.value}))} style={{width:'100%',padding:'9px 12px',border:'1.5px solid #C99A4A',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#FFFDF7',color:'#2f2a23'}}/>
+              </div>
+            ))}
+            <div style={{marginBottom:13}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Arena</div>
+              <select value={draft.arena} onChange={e=>setDraft(d=>({...d,arena:e.target.value}))} style={{width:'100%',padding:'9px 12px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                {ARENAS.map(a=><option key={a}>{a}</option>)}
+              </select>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:13}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Start time</div>
+                <div style={{display:'flex',gap:6}}>
+                  <select value={draft.sH} onChange={e=>setDraft(d=>({...d,sH:e.target.value}))} style={{flex:1,padding:'9px 8px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                    {Array.from({length:14},(_,i)=>i+6).map(h=><option key={h} value={h}>{h<=12?h:h-12}{h<12?'am':h===12?'pm':'pm'}</option>)}
+                  </select>
+                  <select value={draft.sM} onChange={e=>setDraft(d=>({...d,sM:e.target.value}))} style={{width:60,padding:'9px 6px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                    {['00','30'].map(m=><option key={m} value={m}>:{m}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>End time</div>
+                <div style={{display:'flex',gap:6}}>
+                  <select value={draft.eH} onChange={e=>setDraft(d=>({...d,eH:e.target.value}))} style={{flex:1,padding:'9px 8px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                    {Array.from({length:14},(_,i)=>i+6).map(h=><option key={h} value={h}>{h<=12?h:h-12}{h<12?'am':h===12?'pm':'pm'}</option>)}
+                  </select>
+                  <select value={draft.eM} onChange={e=>setDraft(d=>({...d,eM:e.target.value}))} style={{width:60,padding:'9px 6px',border:'1.5px solid #E4D9C0',borderRadius:9,fontSize:14,fontFamily:'inherit',outline:'none',background:'#fff',cursor:'pointer',appearance:'none'}}>
+                    {['00','30'].map(m=><option key={m} value={m}>:{m}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div style={{marginBottom:22}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Event type</div>
+              <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
+                {Object.entries(TYPE_COLOR).map(([t,c])=>(
+                  <button key={t} onClick={()=>setDraft(d=>({...d,type:t}))} style={{padding:'6px 13px',borderRadius:20,border:`1.5px solid ${draft.type===t?c:'#E4D9C0'}`,background:draft.type===t?c+'18':'transparent',color:draft.type===t?c:'#7c7363',fontSize:12.5,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={save} style={{flex:1,padding:12,background:'#1C3A2E',color:'#F1EBDB',border:'none',borderRadius:11,fontFamily:'inherit',fontSize:14,fontWeight:600,cursor:'pointer'}}>Book arena</button>
+              <button onClick={()=>setModal(false)} style={{padding:'12px 18px',background:'#FBF6EC',color:'#5a5345',border:'1px solid #E4D9C0',borderRadius:11,fontFamily:'inherit',fontSize:14,cursor:'pointer'}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
