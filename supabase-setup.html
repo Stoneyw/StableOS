@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StableOS — Supabase Setup Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green:   #1C3A2E;
+    --green2:  #2D5C45;
+    --green3:  #3C7A57;
+    --gold:    #9c7026;
+    --gold-lt: #FBF0D8;
+    --cream:   #F5EFE4;
+    --border:  #E2D9C8;
+    --muted:   #8a8070;
+    --red:     #B94040;
+    --blue:    #2A5DB0;
+    --r:       14px;
+  }
+  body {
+    font-family: 'Hanken Grotesk', sans-serif;
+    background: var(--cream);
+    color: #1a1612;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--green);
+    color: #F1EBDB;
+    padding: 28px 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo-mark {
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,.12);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Spectral', serif;
+    font-size: 20px; font-weight: 700;
+  }
+  .logo-text { font-family: 'Spectral', serif; font-size: 22px; font-weight: 700; }
+  .logo-sub  { font-size: 11px; color: #C9A95A; letter-spacing: 1.8px; text-transform: uppercase; margin-top: 2px; font-weight: 700; }
+  header .badge {
+    margin-left: auto;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px; font-weight: 600; letter-spacing: .4px;
+  }
+
+  /* ── Layout ── */
+  .page { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  h1 { font-family: 'Spectral', serif; font-size: 34px; font-weight: 700; color: var(--green); line-height: 1.15; }
+  .subtitle { font-size: 16px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+
+  /* ── Progress bar ── */
+  .progress {
+    display: flex;
+    gap: 0;
+    margin: 36px 0 48px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-step {
+    flex: 1;
+    padding: 14px 16px;
+    font-size: 12px; font-weight: 700;
+    text-align: center;
+    background: #fff;
+    color: var(--muted);
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    transition: background .15s;
+    position: relative;
+  }
+  .progress-step:last-child { border-right: none; }
+  .progress-step.active { background: var(--green); color: #F1EBDB; }
+  .progress-step.done   { background: #EAF4EE; color: var(--green3); }
+  .progress-step .step-num {
+    display: block;
+    font-size: 18px; font-weight: 800;
+    margin-bottom: 2px;
+  }
+  .progress-step.done .step-num::after { content: ' ✓'; }
+
+  /* ── Steps ── */
+  .step { display: none; }
+  .step.visible { display: block; }
+
+  .step-header {
+    display: flex; align-items: flex-start; gap: 18px;
+    margin-bottom: 28px;
+  }
+  .step-number {
+    width: 48px; height: 48px; flex: none;
+    background: var(--green);
+    color: #F1EBDB;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Spectral', serif;
+    font-size: 22px; font-weight: 700;
+  }
+  .step-header h2 { font-family: 'Spectral', serif; font-size: 26px; font-weight: 700; color: var(--green); }
+  .step-header p  { font-size: 14px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+  /* ── Cards ── */
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* ── Instruction rows ── */
+  .instruction {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .instruction:last-child { border-bottom: none; }
+  .instr-num {
+    width: 26px; height: 26px; flex: none;
+    background: var(--gold-lt);
+    border: 1px solid #e6d3a4;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: var(--gold);
+  }
+  .instr-body { flex: 1; font-size: 14px; line-height: 1.6; color: #3a3228; }
+  .instr-body strong { color: #1a1612; font-weight: 700; }
+  .instr-body .path {
+    display: inline-block;
+    background: #F0EBE2;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--green2);
+  }
+
+  /* ── Code blocks ── */
+  .code-block {
+    background: #1a1612;
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin: 16px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .code-block pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #d4c9b8;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .code-block .kw  { color: #C99A4A; }
+  .code-block .str { color: #8fbf8c; }
+  .code-block .cmt { color: #6a6050; font-style: italic; }
+  .code-block .tag { color: #7ab8e8; }
+  .copy-btn {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.15);
+    color: #d4c9b8;
+    border-radius: 7px;
+    padding: 5px 12px;
+    font-family: 'Hanken Grotesk', sans-serif;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    letter-spacing: .4px;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,.18); }
+  .copy-btn.copied { color: #8fbf8c; }
+
+  /* ── Alert / note ── */
+  .note {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--gold-lt);
+    border: 1px solid #e6d3a4;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 16px 0;
+    font-size: 13.5px; line-height: 1.55; color: #6b4e0a;
+  }
+  .note-icon { font-size: 18px; flex: none; margin-top: 1px; }
+
+  .warn {
+    background: #FDF0F0;
+    border-color: #f0c8c8;
+    color: #7a2020;
+  }
+
+  .success {
+    background: #EAF4EE;
+    border-color: #b8dfc6;
+    color: #1C4A30;
+  }
+
+  /* ── Table ── */
+  .schema-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .schema-table th {
+    text-align: left; padding: 10px 14px;
+    background: var(--cream);
+    border-bottom: 2px solid var(--border);
+    font-size: 11px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .schema-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .schema-table tr:last-child td { border-bottom: none; }
+  .schema-table .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--green2);
+  }
+  .schema-table .desc { color: var(--muted); font-size: 12.5px; }
+  .badge-tag {
+    display: inline-block;
+    background: #EAF4EE;
+    color: var(--green3);
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 11px; font-weight: 700;
+    margin-right: 4px;
+  }
+
+  /* ── Nav buttons ── */
+  .nav-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 36px; padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: 'Hanken Grotesk', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; border: none; text-decoration: none;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--green); color: #F1EBDB; }
+  .btn-primary:hover { opacity: .9; }
+  .btn-ghost {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: #fff; color: #1a1612; }
+  .btn-gold { background: var(--gold); color: #fff; }
+  .btn-gold:hover { opacity: .9; }
+
+  /* ── Checklist ── */
+  .checklist { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .checklist li {
+    display: flex; gap: 12px; align-items: flex-start;
+    font-size: 14px; line-height: 1.5; color: #3a3228;
+  }
+  .checklist li::before {
+    content: '○';
+    font-size: 16px; color: var(--border);
+    flex: none; margin-top: 1px;
+  }
+  .checklist li.done::before { content: '●'; color: var(--green3); }
+
+  /* ── Done screen ── */
+  .done-hero {
+    text-align: center;
+    padding: 48px 24px;
+  }
+  .done-icon {
+    width: 80px; height: 80px;
+    background: #EAF4EE;
+    border: 3px solid #b8dfc6;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    margin: 0 auto 24px;
+  }
+  .done-hero h2 { font-family: 'Spectral', serif; font-size: 30px; font-weight: 700; color: var(--green); }
+  .done-hero p  { font-size: 15px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+
+  .file-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .file-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .file-icon {
+    font-size: 22px; flex: none;
+  }
+  .file-name  { font-size: 13px; font-weight: 700; color: var(--green2); font-family: 'JetBrains Mono', monospace; }
+  .file-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">S</div>
+  <div>
+    <div class="logo-text">StableOS</div>
+    <div class="logo-sub">Supabase Setup Guide</div>
+  </div>
+  <div class="badge">Backend Migration</div>
+</header>
+
+<div class="page">
+  <h1>Connect StableOS to Supabase</h1>
+  <p class="subtitle">Replace the localStorage prototype layer with a real multi-tenant Postgres database. <br>This guide covers schema, auth, RLS policies, and swapping in the new data layer.</p>
+
+  <!-- Progress -->
+  <div class="progress" id="progress">
+    <div class="progress-step active" onclick="goTo(0)"><span class="step-num">1</span>Create Project</div>
+    <div class="progress-step"        onclick="goTo(1)"><span class="step-num">2</span>Run Schema</div>
+    <div class="progress-step"        onclick="goTo(2)"><span class="step-num">3</span>Auth Setup</div>
+    <div class="progress-step"        onclick="goTo(3)"><span class="step-num">4</span>Swap db.js</div>
+    <div class="progress-step"        onclick="goTo(4)"><span class="step-num">5</span>Go Live</div>
+  </div>
+
+  <!-- ── Step 1: Create Project ── -->
+  <div class="step visible" id="step-0">
+    <div class="step-header">
+      <div class="step-number">1</div>
+      <div>
+        <h2>Create a Supabase Project</h2>
+        <p>Takes about 2 minutes. You need a free Supabase account.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Steps</div>
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-body">Go to <strong>supabase.com</strong> → <strong>Start your project</strong> → sign in with GitHub</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-body">Click <strong>New project</strong>, name it <strong>stableos</strong>, pick a region close to your users (US East for Texas)</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">3</div>
+        <div class="instr-body">Set a strong database password and save it somewhere safe — you'll need it if you ever connect directly via <span class="path">psql</span></div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">4</div>
+        <div class="instr-body">Wait ~2 min for provisioning, then go to <strong>Project Settings → API</strong></div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">5</div>
+        <div class="instr-body">Copy your <strong>Project URL</strong> and <strong>anon public key</strong> — you'll paste them into <span class="path">db.supabase.js</span> in step 4</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <div>The <strong>anon key</strong> is safe to expose in client-side code — it's locked down by Row Level Security. Never put the <strong>service_role key</strong> in your front-end HTML.</div>
+    </div>
+
+    <div class="nav-row">
+      <span></span>
+      <button class="btn btn-primary" onclick="goTo(1)">Next: Run Schema →</button>
+    </div>
+  </div>
+
+  <!-- ── Step 2: Run Schema ── -->
+  <div class="step" id="step-1">
+    <div class="step-header">
+      <div class="step-number">2</div>
+      <div>
+        <h2>Run the Database Schema</h2>
+        <p>Creates all 10 tables, indexes, helper functions, and Row Level Security policies.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Database Tables</div>
+      <table class="schema-table">
+        <thead><tr><th>Table</th><th>What it stores</th><th>RLS scope</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">companies</td><td class="desc">Each stable's account, plan, status</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">users</td><td class="desc">Staff, boarders, linked to Supabase Auth</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">horses</td><td class="desc">Horse profiles, location, board type</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">feed_rations</td><td class="desc">AM/PM feed plans per horse</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">feed_log</td><td class="desc">Daily feeding check-offs</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">health_records</td><td class="desc">Vet, farrier, vaccines, coggins</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">events</td><td class="desc">Lessons, training, calendar</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">tasks</td><td class="desc">Daily task board</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">invoices</td><td class="desc">Billing records with line items (JSONB)</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">messages</td><td class="desc">Barn-wide + direct messages</td><td><span class="badge-tag">tenant</span></td></tr>
+          <tr><td class="mono">platform_admins</td><td class="desc">Super admin accounts</td><td><span class="badge-tag">padmin only</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">How to run</div>
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-body">In your Supabase project, go to <strong>SQL Editor</strong> in the left sidebar</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-body">Click <strong>New query</strong></div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">3</div>
+        <div class="instr-body">Open <span class="path">supabase-schema.sql</span> from your repo, paste its entire contents into the editor</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">4</div>
+        <div class="instr-body">Click <strong>Run</strong> (▶) — you should see "Success. No rows returned"</div>
+      </div>
+    </div>
+
+    <div class="note warn">
+      <div class="note-icon">⚠️</div>
+      <div>If you see an error like <em>"relation already exists"</em>, the schema was partially run before. Click <strong>Table Editor</strong> to verify tables exist, then continue to step 3.</div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="goTo(0)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(2)">Next: Auth Setup →</button>
+    </div>
+  </div>
+
+  <!-- ── Step 3: Auth Setup ── -->
+  <div class="step" id="step-2">
+    <div class="step-header">
+      <div class="step-number">3</div>
+      <div>
+        <h2>Configure Auth & Create Admin</h2>
+        <p>Supabase Auth handles password hashing and sessions. You need to create your super admin account here.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Create your Super Admin account</div>
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-body">In Supabase, go to <strong>Authentication → Users</strong> → click <strong>Add user</strong></div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-body">Enter <strong>stoneyw@gmail.com</strong> and a secure password, then click <strong>Create user</strong></div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">3</div>
+        <div class="instr-body">Copy the <strong>User UID</strong> shown in the users list (the long uuid like <span class="path">a1b2c3d4-...</span>)</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">4</div>
+        <div class="instr-body">Go back to <strong>SQL Editor</strong> and run this, replacing the UUID with yours:</div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="kw">insert into</span> platform_admins (auth_id, name, email)
+<span class="kw">values</span> (<span class="str">'YOUR-AUTH-UUID-HERE'</span>, <span class="str">'Stoney W.'</span>, <span class="str">'stoneyw@gmail.com'</span>);</pre>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Auth settings to configure</div>
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-body">Go to <strong>Authentication → Providers</strong> — make sure <strong>Email</strong> is enabled</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-body">Under <strong>Authentication → Email Templates</strong>, customize the confirmation email with your StableOS branding (optional)</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">3</div>
+        <div class="instr-body">Under <strong>Authentication → URL Configuration</strong>, add your GitHub Pages URL as a <strong>Redirect URL</strong>: <span class="path">https://stoneyw.github.io/StableOS/</span></div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">4</div>
+        <div class="instr-body">Optionally, under <strong>Authentication → Settings</strong>, disable <strong>Confirm email</strong> during development so sign-ups work immediately</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <div>When a new stable signs up via the onboarding page, <code>db.supabase.js</code> calls <strong>supabase.auth.signUp()</strong> which creates the Supabase Auth user automatically — you don't need to manually add each one.</div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(3)">Next: Swap db.js →</button>
+    </div>
+  </div>
+
+  <!-- ── Step 4: Swap db.js ── -->
+  <div class="step" id="step-3">
+    <div class="step-header">
+      <div class="step-number">4</div>
+      <div>
+        <h2>Swap in the New Data Layer</h2>
+        <p>Two edits to each HTML file — add the Supabase SDK and replace <code>db.js</code> with <code>db.supabase.js</code>.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">1 — Add your credentials to db.supabase.js</div>
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-body">Open <span class="path">js/db.supabase.js</span> in your editor</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-body">Replace the two placeholder values at the top:</div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cmt">// js/db.supabase.js — lines 8–9</span>
+<span class="kw">const</span> SUPABASE_URL  = <span class="str">'https://YOUR_PROJECT.supabase.co'</span>;
+<span class="kw">const</span> SUPABASE_ANON = <span class="str">'YOUR_ANON_KEY'</span>;
+
+<span class="cmt">// Replace with values from:
+// Supabase Dashboard → Project Settings → API</span></pre>
+    </div>
+
+    <div class="card">
+      <div class="card-title">2 — Update your HTML files</div>
+      <p style="font-size:13.5px;color:var(--muted);margin-bottom:14px;line-height:1.5">In each HTML file, find the two script tags in the <code>&lt;head&gt;</code> and make these changes:</p>
+      <div class="instruction">
+        <div class="instr-num">1</div>
+        <div class="instr-body"><strong>Add</strong> the Supabase SDK <em>before</em> your db script</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">2</div>
+        <div class="instr-body"><strong>Replace</strong> <span class="path">js/db.js</span> with <span class="path">js/db.supabase.js</span></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cmt">&lt;!-- BEFORE --&gt;</span>
+<span class="tag">&lt;script</span> src=<span class="str">"js/db.js"</span><span class="tag">&gt;&lt;/script&gt;</span>
+
+<span class="cmt">&lt;!-- AFTER --&gt;</span>
+<span class="tag">&lt;script</span> src=<span class="str">"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"</span><span class="tag">&gt;&lt;/script&gt;</span>
+<span class="tag">&lt;script</span> src=<span class="str">"js/db.supabase.js"</span><span class="tag">&gt;&lt;/script&gt;</span></pre>
+    </div>
+
+    <div class="card">
+      <div class="card-title">3 — Make your app async-aware</div>
+      <p style="font-size:13.5px;color:var(--muted);margin-bottom:14px;line-height:1.5">The new <code>db.supabase.js</code> returns Promises from every method. Update your React components to await them:</p>
+    </div>
+
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cmt">// OLD (synchronous — localStorage)</span>
+<span class="kw">const</span> horses = window.DB.getHorses();
+setHorses(horses);
+
+<span class="cmt">// NEW (async — Supabase)</span>
+<span class="kw">useEffect</span>(() => {
+  window.DB.getHorses().then(h => setHorses(h));
+}, []);
+
+<span class="cmt">// OR with async/await in an effect:</span>
+<span class="kw">useEffect</span>(() => {
+  (<span class="kw">async</span> () => {
+    <span class="kw">const</span> horses = <span class="kw">await</span> window.DB.getHorses();
+    setHorses(horses);
+  })();
+}, []);</pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <div>You can migrate one page at a time — keep <span class="path">db.js</span> on pages you haven't migrated yet and use <span class="path">db.supabase.js</span> on updated ones.</div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(4)">Next: Go Live →</button>
+    </div>
+  </div>
+
+  <!-- ── Step 5: Go Live ── -->
+  <div class="step" id="step-4">
+    <div class="step-header">
+      <div class="step-number">5</div>
+      <div>
+        <h2>Push to GitHub & Go Live</h2>
+        <p>Final checklist before your Supabase-backed StableOS goes public.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pre-launch checklist</div>
+      <ul class="checklist">
+        <li>Supabase project created and schema SQL executed</li>
+        <li>Platform admin user created in Auth → Users and inserted into <code>platform_admins</code></li>
+        <li>Project URL and anon key added to <code>js/db.supabase.js</code></li>
+        <li>Supabase SDK script tag added to all HTML files</li>
+        <li><code>js/db.js</code> replaced with <code>js/db.supabase.js</code> in all HTML files</li>
+        <li>React components updated to <code>await</code> all <code>window.DB</code> calls</li>
+        <li>GitHub Pages redirect URL added in Supabase Auth → URL Configuration</li>
+        <li>Tested sign-up flow end-to-end locally</li>
+        <li>Pushed all files to <code>github.com/stoneyw/StableOS</code></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Files to push to your repo</div>
+      <div class="file-grid">
+        <div class="file-card">
+          <div class="file-icon">🗄️</div>
+          <div>
+            <div class="file-name">supabase-schema.sql</div>
+            <div class="file-desc">Keep for reference / re-runs. Don't expose secrets here.</div>
+          </div>
+        </div>
+        <div class="file-card">
+          <div class="file-icon">⚡</div>
+          <div>
+            <div class="file-name">js/db.supabase.js</div>
+            <div class="file-desc">New async data layer. Contains your anon key (safe to expose).</div>
+          </div>
+        </div>
+        <div class="file-card">
+          <div class="file-icon">📄</div>
+          <div>
+            <div class="file-name">app.html → index.html</div>
+            <div class="file-desc">Rename so GitHub Pages serves it at the root URL.</div>
+          </div>
+        </div>
+        <div class="file-card">
+          <div class="file-icon">🗑️</div>
+          <div>
+            <div class="file-name">js/db.js</div>
+            <div class="file-desc">Can be removed once all pages are migrated.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note success">
+      <div class="note-icon">🎉</div>
+      <div><strong>That's it!</strong> Once pushed, <strong>stoneyw.github.io/StableOS</strong> will be a fully multi-tenant SaaS app backed by a real Postgres database. New stables signing up will get their own isolated data automatically via Row Level Security.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Next steps after launch</div>
+      <div class="instruction">
+        <div class="instr-num">→</div>
+        <div class="instr-body"><strong>Stripe integration</strong> — add <code>stripe_customer_id</code> to the <code>companies</code> table and wire up the billing page</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">→</div>
+        <div class="instr-body"><strong>Email notifications</strong> — use Supabase Edge Functions + Resend for invoice reminders and health due alerts</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">→</div>
+        <div class="instr-body"><strong>Realtime messages</strong> — call <code>supabase.channel()</code> on the messages table for live barn-board updates</div>
+      </div>
+      <div class="instruction">
+        <div class="instr-num">→</div>
+        <div class="instr-body"><strong>File uploads</strong> — use Supabase Storage for horse photos and Coggins documents</div>
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="goTo(3)">← Back</button>
+      <a class="btn btn-gold" href="https://supabase.com/dashboard" target="_blank">Open Supabase Dashboard ↗</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let current = 0;
+  const steps = document.querySelectorAll('.step');
+  const progSteps = document.querySelectorAll('.progress-step');
+
+  function goTo(n) {
+    steps[current].classList.remove('visible');
+    progSteps[current].classList.remove('active');
+    if (current < n) progSteps[current].classList.add('done');
+    else progSteps[current].classList.remove('done');
+    current = n;
+    steps[current].classList.add('visible');
+    progSteps[current].classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function copyCode(btn) {
+    const code = btn.nextElementSibling.textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
