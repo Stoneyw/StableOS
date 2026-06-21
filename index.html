@@ -113,7 +113,7 @@ function LoginScreen({onLogin}){
   const submit=e=>{
     e.preventDefault();if(!email||!pw){setErr('Enter email and password.');return;}
     setLoading(true);setErr('');
-    setTimeout(()=>{const a=db.login(email,pw);setLoading(false);a?onLogin(a):setErr('Invalid. Try: chris@thewinnersstable.com / StableOS123');},600);
+    setTimeout(()=>{const a=db.login(email,pw);setLoading(false);a?onLogin(a):setErr('Invalid email or password.');},600);
   };
   return <div style={{height:'100vh',background:'#EBE2CF',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
     <div style={{width:'100%',maxWidth:420}}>
@@ -146,9 +146,7 @@ function LoginScreen({onLogin}){
             {loading?'Signing in…':'Sign in'}
           </button>
         </form>
-        <div style={{marginTop:18,padding:'12px 14px',background:'#FBF0D8',border:'1px solid #e6d3a4',borderRadius:10,fontSize:12.5,color:'#7a5200'}}>
-          <b>Demo:</b> chris@thewinnersstable.com / StableOS123
-        </div>
+
       </div>
       <div style={{textAlign:'center',marginTop:14,fontSize:12,color:'#9a9081'}}>
         New stable? <a href="onboarding.html" style={{color:'#3C7A57',fontWeight:600}}>Set up your barn →</a>

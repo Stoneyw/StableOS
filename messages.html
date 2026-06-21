@@ -16,6 +16,7 @@ body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#EBE2CF;-webki
 a{text-decoration:none;color:inherit}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#cdbf9f;border-radius:6px;border:2px solid transparent;background-clip:content-box}
 input::placeholder{color:#b0a690}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <template id="__bundler_thumbnail" data-bg-color="#1C3A2E">
@@ -148,6 +149,9 @@ function App() {
   const [compose, setCompose] = React.useState('');
   const [search, setSearch] = React.useState('');
   const [threads, setThreads] = React.useState(THREADS);
+  const [mediaFile, setMediaFile] = React.useState(null);   // { url, type, name }
+  const [uploading, setUploading] = React.useState(false);
+  const fileInputRef = React.useRef(null);
   const msgEndRef = React.useRef(null);
   const active = threads.find(t=>t.id===activeId)||threads[0];
 
@@ -155,11 +159,63 @@ function App() {
     if(msgEndRef.current) msgEndRef.current.scrollTop = msgEndRef.current.scrollHeight;
   },[activeId, threads]);
 
-  const send = () => {
-    if (!compose.trim()) return;
+  const pickFile = () => fileInputRef.current && fileInputRef.current.click();
+
+  const onFileChange = e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setMediaFile({ url, type: file.type, name: file.name, raw: file });
+    e.target.value = '';
+  };
+
+  const clearMedia = () => {
+    if (mediaFile) URL.revokeObjectURL(mediaFile.url);
+    setMediaFile(null);
+  };
+
+  const send = async () => {
+    if (!compose.trim() && !mediaFile) return;
     const now = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    setThreads(ts=>ts.map(t=>t.id===activeId?{...t,msgs:[...t.msgs,{me:true,t:now,x:compose}],snippet:compose.slice(0,40)+'...',time:now,unread:false}:t));
+    let media = null;
+
+    if (mediaFile) {
+      setUploading(true);
+      // Upload to Supabase Storage if available, otherwise use local blob URL
+      try {
+        if (window.supabase) {
+          const sb = window.supabase.createClient(
+            'https://vihmrjonkeiuzjzuzzsj.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpaG1yam9ua2VpdXpqenV6enNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMTAyOTMsImV4cCI6MjA5NzU4NjI5M30.hIbnMUQPd3W8owt0VjQIzwOkiS74ZWbJez0DbIAsYTs'
+          );
+          const ext = mediaFile.name.split('.').pop();
+          const path = `messages/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { data, error } = await sb.storage.from('stableos-media').upload(path, mediaFile.raw, { upsert: false });
+          if (!error && data) {
+            const { data: pub } = sb.storage.from('stableos-media').getPublicUrl(path);
+            media = { url: pub.publicUrl, type: mediaFile.type, name: mediaFile.name };
+          } else {
+            media = { url: mediaFile.url, type: mediaFile.type, name: mediaFile.name };
+          }
+        } else {
+          media = { url: mediaFile.url, type: mediaFile.type, name: mediaFile.name };
+        }
+      } catch(_) {
+        media = { url: mediaFile.url, type: mediaFile.type, name: mediaFile.name };
+      }
+      setUploading(false);
+    }
+
+    const snippet = media
+      ? (media.type.startsWith('video') ? '📹 Video' : '🖼 Image')
+      : compose.slice(0,40) + (compose.length > 40 ? '...' : '');
+
+    setThreads(ts=>ts.map(t=>t.id===activeId
+      ? {...t, msgs:[...t.msgs,{me:true,t:now,x:compose,media}], snippet, time:now, unread:false}
+      : t
+    ));
     setCompose('');
+    setMediaFile(null);
   };
 
   const select = id => {
@@ -254,8 +310,18 @@ function App() {
                 <div style={{textAlign:'center',fontSize:11,color:'#b0a690',letterSpacing:.3,marginBottom:6}}>Today</div>
                 {active.msgs.map((m,i)=>(
                   <div key={i} style={{display:'flex',justifyContent:m.me?'flex-end':'flex-start'}}>
-                    <div>
-                      <div style={{maxWidth:420,padding:'10px 14px',borderRadius:m.me?'16px 4px 16px 16px':'4px 16px 16px 16px',background:m.me?'#1C3A2E':'#fff',color:m.me?'#EBE2CF':'#2f2a23',fontSize:13.5,lineHeight:1.55,border:m.me?'none':'1px solid #E8DFCC',boxShadow:'0 1px 4px rgba(40,30,15,.06)'}}>{m.x}</div>
+                    <div style={{maxWidth:420}}>
+                      {/* Media bubble */}
+                      {m.media && (
+                        <div style={{marginBottom:m.x?6:0,borderRadius:m.me?'16px 4px 8px 16px':'4px 16px 8px 16px',overflow:'hidden',border:'1px solid #E8DFCC',boxShadow:'0 1px 4px rgba(40,30,15,.06)'}}>
+                          {m.media.type.startsWith('video')
+                            ? <video src={m.media.url} controls style={{display:'block',width:'100%',maxWidth:360,maxHeight:220,background:'#000'}}/>
+                            : <img src={m.media.url} alt={m.media.name} style={{display:'block',width:'100%',maxWidth:360,maxHeight:260,objectFit:'cover',cursor:'pointer'}} onClick={()=>window.open(m.media.url,'_blank')}/>
+                          }
+                        </div>
+                      )}
+                      {/* Text bubble */}
+                      {m.x && <div style={{padding:'10px 14px',borderRadius:m.me?'16px 4px 16px 16px':'4px 16px 16px 16px',background:m.me?'#1C3A2E':'#fff',color:m.me?'#EBE2CF':'#2f2a23',fontSize:13.5,lineHeight:1.55,border:m.me?'none':'1px solid #E8DFCC',boxShadow:'0 1px 4px rgba(40,30,15,.06)'}}>{m.x}</div>}
                       <div style={{fontSize:10.5,color:'#b0a690',marginTop:4,textAlign:m.me?'right':'left'}}>{m.t}</div>
                     </div>
                   </div>
@@ -263,17 +329,47 @@ function App() {
               </div>
 
               {/* Compose */}
-              <div style={{padding:'12px 16px',borderTop:'1px solid #EDE6D5',display:'flex',alignItems:'center',gap:10,flexShrink:0,background:'#fff'}}>
-                <input
-                  value={compose}
-                  onChange={e=>setCompose(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&!e.shiftKey&&(e.preventDefault(),send())}
-                  placeholder="Write a message…"
-                  style={{flex:1,border:'none',outline:'none',background:'transparent',fontFamily:'inherit',fontSize:13.5,color:'#2f2a23',padding:'4px 0'}}
-                />
-                <button onClick={send} style={{width:38,height:38,borderRadius:10,background:'#1C3A2E',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,opacity:compose.trim()?1:.5,transition:'opacity .15s'}}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-                </button>
+              <div style={{borderTop:'1px solid #EDE6D5',flexShrink:0,background:'#fff'}}>
+                {/* Media preview */}
+                {mediaFile && (
+                  <div style={{padding:'10px 16px 0',display:'flex',alignItems:'flex-start',gap:10}}>
+                    <div style={{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid #E4D9C0',flexShrink:0}}>
+                      {mediaFile.type.startsWith('video')
+                        ? <video src={mediaFile.url} style={{display:'block',width:120,height:80,objectFit:'cover',background:'#000'}}/>
+                        : <img src={mediaFile.url} alt="preview" style={{display:'block',width:120,height:80,objectFit:'cover'}}/>
+                      }
+                      <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.18)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        <span style={{fontSize:22}}>{mediaFile.type.startsWith('video')?'🎬':'🖼'}</span>
+                      </div>
+                      <button onClick={clearMedia} style={{position:'absolute',top:4,right:4,width:20,height:20,borderRadius:'50%',background:'rgba(0,0,0,.55)',border:'none',color:'#fff',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+                    </div>
+                    <div style={{flex:1,fontSize:12,color:'#8A8170',paddingTop:4,lineHeight:1.4}}>
+                      <div style={{fontWeight:600,color:'#2f2a23',marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:260}}>{mediaFile.name}</div>
+                      <div style={{color:'#b0a690'}}>{mediaFile.type.startsWith('video')?'Video':'Image'} · ready to send</div>
+                    </div>
+                  </div>
+                )}
+                <div style={{padding:'12px 16px',display:'flex',alignItems:'center',gap:8}}>
+                  {/* Hidden file input */}
+                  <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={onFileChange} style={{display:'none'}}/>
+                  {/* Attach button */}
+                  <button onClick={pickFile} title="Attach image or video" style={{width:36,height:36,borderRadius:9,border:'1px solid #E4D9C0',background:mediaFile?'#F5EDDA':'#FAF5EB',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,color:mediaFile?'#9c7026':'#8A8170',transition:'.15s'}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  </button>
+                  <input
+                    value={compose}
+                    onChange={e=>setCompose(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&!e.shiftKey&&(e.preventDefault(),send())}
+                    placeholder="Write a message…"
+                    style={{flex:1,border:'none',outline:'none',background:'transparent',fontFamily:'inherit',fontSize:13.5,color:'#2f2a23',padding:'4px 0'}}
+                  />
+                  <button onClick={send} disabled={uploading} style={{width:38,height:38,borderRadius:10,background:'#1C3A2E',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,opacity:(compose.trim()||mediaFile)&&!uploading?1:.4,transition:'opacity .15s'}}>
+                    {uploading
+                      ? <div style={{width:16,height:16,border:'2px solid rgba(255,255,255,.3)',borderTopColor:'#F1EBDB',borderRadius:'50%',animation:'spin .7s linear infinite'}}/>
+                      : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F1EBDB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                    }
+                  </button>
+                </div>
               </div>
             </div>
 
