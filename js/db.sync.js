@@ -51,7 +51,7 @@
         // 2. Pull all tenant tables in parallel
         const [
           { data: companies },
-          { data: users },
+          { data: users },  // includes rate column now
           { data: horses },
           { data: feed_rations },
           { data: feed_log },
@@ -107,6 +107,8 @@
     // Patch window.DB methods to also write to Supabase after updating localStorage.
     // Called automatically after boot().
     _patchWrites() {
+      if (this._patched) { console.log('[DB_SYNC] writes already patched — skipping'); return; }
+      this._patched = true;
       const orig = {};
       const mirror = (method, table, buildRow) => {
         orig[method] = window.DB[method].bind(window.DB);
@@ -196,9 +198,89 @@
         }
       };
 
-      // Users
-      mirror('addUser',    'users', (d, r)     => r);
-      mirror('updateUser', 'users', (id, d, r) => r);
+      // Users — profile fields (non-password)
+      orig.addUser    = window.DB.addUser.bind(window.DB);
+      orig.updateUser = window.DB.updateUser.bind(window.DB);
+
+      // addUser: save profile to users table AND create Supabase Auth account
+      window.DB.addUser = async function (d) {
+        const result = orig.addUser(d);
+        const auth = window.DB.getAuth();
+        if (!auth) return result;
+        // 1. Create Supabase Auth user so they can actually sign in
+        if (d.email && d.password) {
+          try {
+            const { data: authData, error: authErr } = await sb.auth.signUp({
+              email: d.email,
+              password: d.password
+            });
+            if (!authErr && authData?.user) {
+              // 2. Insert users row with auth_id linked
+              await sb.from('users').insert(snakeify({
+                authId: authData.user.id,
+                companyId: auth.companyId,
+                name: d.name,
+                email: d.email,
+                role: d.role || 'boarder',
+                avatar: d.name ? d.name.slice(0,2).toUpperCase() : '??',
+                phone: d.phone || null
+              }));
+              console.log('[DB_SYNC] ✓ Created auth + users row for', d.email);
+            } else {
+              console.warn('[DB_SYNC] signUp error:', authErr?.message);
+            }
+          } catch(e) { console.warn('[DB_SYNC] addUser auth:', e); }
+        } else {
+          // No password — just insert users row (no auth account yet)
+          await sb.from('users').insert(snakeify({
+            companyId: auth.companyId,
+            name: d.name, email: d.email,
+            role: d.role || 'boarder',
+            avatar: d.name ? d.name.slice(0,2).toUpperCase() : '??',
+            phone: d.phone || null
+          })).then(({error}) => { if(error) console.warn('[DB_SYNC] insert user:', error.message); });
+        }
+        return result;
+      };
+
+      // updateUser: save profile fields + handle password changes via Supabase Auth
+      window.DB.updateUser = async function (id, d) {
+        const result = orig.updateUser(id, d);
+        const auth = window.DB.getAuth();
+        if (!auth) return result;
+
+        // Mirror non-password fields to Supabase users table
+        const patch = {};
+        ['name','email','phone','role','rate'].forEach(k => { if (d[k] !== undefined) patch[k] = d[k]; });
+        if (Object.keys(patch).length) {
+          sb.from('users').update(snakeify(patch)).eq('id', id)
+            .then(({error}) => { if(error) console.warn('[DB_SYNC] update user:', error.message); });
+        }
+
+        // Password change
+        if (d.password) {
+          if (auth.userId === id) {
+            // Changing own password — Supabase Auth supports this directly
+            sb.auth.updateUser({ password: d.password })
+              .then(({error}) => {
+                if (error) console.warn('[DB_SYNC] updateUser password:', error.message);
+                else console.log('[DB_SYNC] ✓ Password updated for', auth.email);
+              });
+          } else {
+            // Changing another user's password — send them a reset email
+            const target = window.DB.getUserById(id);
+            if (target?.email) {
+              sb.auth.resetPasswordForEmail(target.email, {
+                redirectTo: window.location.origin + '/app.html'
+              }).then(({error}) => {
+                if (error) console.warn('[DB_SYNC] resetPassword:', error.message);
+                else console.log('[DB_SYNC] ✓ Password reset email sent to', target.email);
+              });
+            }
+          }
+        }
+        return result;
+      };
 
       console.log('[DB_SYNC] ✓ Write mirroring active');
     }
