@@ -74,7 +74,7 @@
         ]);
 
         // 3. Merge into the localStorage store db.js manages
-        const store = JSON.parse(localStorage.getItem('stableos_v3') || 'null') || {};
+        const store = JSON.parse(localStorage.getItem('stableos_v4') || 'null') || {};
         store.companies      = camelify(companies || []);
         store.users          = camelify(users || []);
         store.horses         = camelify(horses || []);
@@ -91,7 +91,7 @@
         // Keep platformAdmins seed so superadmin still works locally
         if (!store.platformAdmins) store.platformAdmins = [];
 
-        localStorage.setItem('stableos_v3', JSON.stringify(store));
+        localStorage.setItem('stableos_v4', JSON.stringify(store));
 
         this.ready = true;
         if (typeof this.onReady === 'function') this.onReady();
@@ -318,9 +318,63 @@
       if (session) {
         _sbSession = session;
         window.DB_SYNC._patchWrites();
+
+        // Re-sync from Supabase in background so stale localStorage gets refreshed
+        const auth = window.DB.getAuth();
+        if (auth && auth.email) {
+          window.DB_SYNC._resync();
+        }
         console.log('[DB_SYNC] ✓ Session restored, write mirroring active');
       }
     }
   })();
+
+  // ── Tab focus re-sync ────────────────────────────────────────────────────
+  // Every time the user returns to the tab, silently pull fresh data from
+  // Supabase so changes made on another device/browser are reflected.
+  let _lastSync = 0;
+  window.DB_SYNC._resync = async function() {
+    if (!_sbSession) return;
+    const now = Date.now();
+    if (now - _lastSync < 30000) return; // debounce: max once per 30s
+    _lastSync = now;
+    try {
+      const [
+        { data: companies }, { data: users }, { data: horses },
+        { data: feed_rations }, { data: feed_log }, { data: health_records },
+        { data: events }, { data: tasks }, { data: invoices }, { data: messages }
+      ] = await Promise.all([
+        sb.from('companies').select('*'),
+        sb.from('users').select('*'),
+        sb.from('horses').select('*'),
+        sb.from('feed_rations').select('*'),
+        sb.from('feed_log').select('*'),
+        sb.from('health_records').select('*'),
+        sb.from('events').select('*'),
+        sb.from('tasks').select('*'),
+        sb.from('invoices').select('*'),
+        sb.from('messages').select('*')
+      ]);
+      const store = JSON.parse(localStorage.getItem('stableos_v4') || 'null') || {};
+      store.companies     = camelify(companies || []);
+      store.users         = camelify(users || []);
+      store.horses        = camelify(horses || []);
+      store.feedRations   = camelify(feed_rations || []);
+      store.feedLog       = camelify(feed_log || []);
+      store.healthRecords = camelify(health_records || []);
+      store.events        = camelify(events || []);
+      store.tasks         = camelify(tasks || []);
+      store.invoices      = camelify(invoices || []);
+      store.messages      = camelify(messages || []);
+      localStorage.setItem('stableos_v4', JSON.stringify(store));
+      // Notify app to re-render if it's listening
+      window.dispatchEvent(new CustomEvent('db-sync-refresh'));
+      console.log('[DB_SYNC] ✓ Re-synced from Supabase at', new Date().toLocaleTimeString());
+    } catch(e) { console.warn('[DB_SYNC] re-sync error:', e); }
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') window.DB_SYNC._resync();
+  });
 
 })();

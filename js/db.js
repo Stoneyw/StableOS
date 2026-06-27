@@ -11,7 +11,7 @@
 // ----------------------------------------------------------------------------
 
 (function () {
-  const STORE   = 'stableos_v3';        // bumped key → re-seeds with multi-tenant schema
+  const STORE   = 'stableos_v4';        // bumped key → re-seeds with live Supabase data
   const AUTH    = 'stableos_auth_v2';   // tenant-user session
   const PADMIN  = 'stableos_padmin_v2'; // platform-admin session
 
@@ -34,19 +34,20 @@
     // ── Company 1 — The Winners Stable (authored) ──
     S.companies.push({ id:1, name:"The Winners Stable", slug:"winners-stable", location:"Georgetown, TX", address:"123 Ranch Road, Georgetown, TX 78626", phone:"(512) 555-0100", website:"www.thewinnersstable.com", plan:"Professional", facilityType:"Boarding facility", status:"active", joined:"Jan 2024", ownerEmail:"chris@thewinnersstable.com" });
     S.users.push(
-      { id:1,  companyId:1, name:"Chris",      email:"chris@thewinnersstable.com",  password:"StableOS123", role:"owner",   avatar:"CH", phone:"512-585-4092" },
-      { id:2,  companyId:1, name:"Eileen",     email:"eileen@thewinnersstable.com", password:"stable123",   role:"manager", avatar:"EI", phone:"512-585-4092" },
-      { id:3,  companyId:1, name:"Sam Okafor", email:"sam@thewinnersstable.com",    password:"stable123",   role:"trainer", avatar:"SO" },
-      { id:4,  companyId:1, name:"Angela Crews",email:"angela@thewinnersstable.com",password:"stable123",   role:"trainer", avatar:"AC" },
-      { id:5,  companyId:1, name:"Emily",      email:"emily@gmail.com",             password:"stable123",   role:"boarder", avatar:"EM" },
-      { id:6,  companyId:1, name:"Christy",    email:"christy@gmail.com",           password:"stable123",   role:"boarder", avatar:"CH", phone:"512-767-8019" },
-      { id:7,  companyId:1, name:"Stephanie",  email:"stephanie@gmail.com",         password:"stable123",   role:"boarder", avatar:"ST", phone:"512-468-3002" },
-      { id:8,  companyId:1, name:"Laine",      email:"laine@gmail.com",             password:"stable123",   role:"boarder", avatar:"LA", phone:"512-567-3022" },
-      { id:9,  companyId:1, name:"Laurel",     email:"laurel@gmail.com",            password:"stable123",   role:"boarder", avatar:"LA", phone:"214-901-8764" },
-      { id:10, companyId:1, name:"Maddie",     email:"maddie@gmail.com",            password:"stable123",   role:"boarder", avatar:"MA", phone:"971-228-9916" },
-      { id:11, companyId:1, name:"Mani",       email:"mani@gmail.com",              password:"stable123",   role:"boarder", avatar:"MA", phone:"254-624-0966" },
-      { id:12, companyId:1, name:"Bri",        email:"bri@gmail.com",               password:"stable123",   role:"boarder", avatar:"BR", phone:"512-796-1931" },
-      { id:13, companyId:1, name:"Charlie",    email:"charlie@gmail.com",           password:"stable123",   role:"boarder", avatar:"CH", phone:"512-549-0051" }
+      { id:1,  companyId:1, name:"Chris",        email:"chris@thewinnersstable.com",  password:"StableOS123", role:"owner",   avatar:"CH", phone:"512-585-4092" },
+      { id:2,  companyId:1, name:"Eileen",        email:"eileen@thewinnersstable.com", password:"stable123",   role:"manager", avatar:"EI", phone:"512-585-4092" },
+      { id:14, companyId:1, name:"Laine",         email:"laine@thewinnersstable.com",  password:"stable123",   role:"manager", avatar:"LA" },
+      { id:15, companyId:1, name:"Stoney",        email:"stoney@thewinnersstable.com", password:"stable123",   role:"staff",   avatar:"ST" },
+      { id:5,  companyId:1, name:"Emily",         email:"emily@gmail.com",             password:"stable123",   role:"boarder", avatar:"EM" },
+      { id:6,  companyId:1, name:"Christy",       email:"christy@gmail.com",           password:"stable123",   role:"boarder", avatar:"CH", phone:"512-767-8019" },
+      { id:7,  companyId:1, name:"Stephanie",     email:"stephanie@gmail.com",         password:"stable123",   role:"boarder", avatar:"ST", phone:"512-468-3002" },
+      { id:8,  companyId:1, name:"Laine",         email:"laine@gmail.com",             password:"stable123",   role:"boarder", avatar:"LA", phone:"512-567-3022" },
+      { id:9,  companyId:1, name:"Laurel",        email:"laurel@gmail.com",            password:"stable123",   role:"boarder", avatar:"LA", phone:"214-901-8764" },
+      { id:10, companyId:1, name:"Maddie",        email:"maddie@gmail.com",            password:"stable123",   role:"boarder", avatar:"MA", phone:"971-228-9916" },
+      { id:11, companyId:1, name:"Mani",          email:"mani@gmail.com",              password:"stable123",   role:"boarder", avatar:"MA", phone:"254-624-0966" },
+      { id:12, companyId:1, name:"Bri",           email:"bri@gmail.com",               password:"stable123",   role:"boarder", avatar:"BR", phone:"512-796-1931" },
+      { id:13, companyId:1, name:"Charlie",       email:"charlie@gmail.com",           password:"stable123",   role:"boarder", avatar:"CH", phone:"512-549-0051" },
+      { id:16, companyId:1, name:"Grace Owsley",  email:"grace@thewinnersstable.com",  password:"stable123",   role:"trainer", avatar:"GR" }
     );
     S.horses.push(
       { id:1,  companyId:1, name:"Georgia", breed:"Quarter Horse", coat:"Bay",      sex:"mare",    location:"Paddock W1",  boardType:"paddock", ownerId:5,    status:"active", notes:"" },
@@ -107,10 +108,10 @@
       { id:10, companyId:1, horseId:7, type:"vaccination", title:"5-way + WNV",        performedOn:"2026-03-15", nextDueOn:"2027-03-15", provider:"Dr. Susan Hill", cost:85,  notes:"" }
     );
     S.events.push(
-      { id:1, companyId:1, title:"Private lesson — Georgia",      type:"lesson",   arena:"Covered Arena", horseId:1,    staffId:3, startsAt:`${TODAY}T07:00:00`, endsAt:`${TODAY}T08:00:00`,  notes:"" },
-      { id:2, companyId:1, title:"Groundwork · Round Pen — Foxy", type:"training", arena:"Round Pen 1",   horseId:4,    staffId:4, startsAt:`${TODAY}T09:30:00`, endsAt:`${TODAY}T10:30:00`,  notes:"" },
-      { id:3, companyId:1, title:"Training ride — Santana",       type:"training", arena:"Covered Arena", horseId:9,    staffId:3, startsAt:`${TODAY}T14:00:00`, endsAt:`${TODAY}T15:00:00`,  notes:"" },
-      { id:4, companyId:1, title:"Group lesson (3 riders)",       type:"lesson",   arena:"Outdoor Arena", horseId:null, staffId:3, startsAt:`${TODAY}T16:00:00`, endsAt:`${TODAY}T17:30:00`,  notes:"Sophie, Rio, Journey" }
+      { id:1, companyId:1, title:"Private lesson — Georgia",      type:"lesson",   arena:"Covered Arena", horseId:1,    staffId:16, startsAt:`${TODAY}T07:00:00`, endsAt:`${TODAY}T08:00:00`,  notes:"" },
+      { id:2, companyId:1, title:"Groundwork · Round Pen — Foxy", type:"training", arena:"Round Pen 1",   horseId:4,    staffId:16, startsAt:`${TODAY}T09:30:00`, endsAt:`${TODAY}T10:30:00`,  notes:"" },
+      { id:3, companyId:1, title:"Training ride — Santana",       type:"training", arena:"Covered Arena", horseId:9,    staffId:16, startsAt:`${TODAY}T14:00:00`, endsAt:`${TODAY}T15:00:00`,  notes:"" },
+      { id:4, companyId:1, title:"Group lesson (3 riders)",       type:"lesson",   arena:"Outdoor Arena", horseId:null, staffId:16, startsAt:`${TODAY}T16:00:00`, endsAt:`${TODAY}T17:30:00`,  notes:"Sophie, Rio, Journey" }
     );
     S.tasks.push(
       { id:1, companyId:1, title:"Muck stalls 1–3",                          assigneeId:3, dueOn:TODAY, priority:"normal", done:false, doneAt:null },

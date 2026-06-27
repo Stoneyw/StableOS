@@ -1312,33 +1312,33 @@ const MSG_GROUPS=[
   {id:'g_board', name:'All boarders',      role:'Group · Boarders', color:'#9c7026'},
 ];
 const MSG_PEOPLE=[
-  {id:'p1', name:'Marisol Vega', role:'Boarder'},
-  {id:'p2', name:'Luis Romero',  role:'Head Groom'},
-  {id:'p3', name:'Sam Okafor',   role:'Trainer'},
-  {id:'p4', name:'Angela Crews', role:'Trainer'},
-  {id:'p5', name:'Priya Nair',   role:'Boarder'},
-  {id:'p6', name:'Christy',      role:'Boarder'},
-  {id:'p7', name:'Stephanie',    role:'Boarder'},
-  {id:'p8', name:'Laine',        role:'Boarder'},
-  {id:'p9', name:'Laurel',       role:'Boarder'},
-  {id:'p10',name:'Maddie',       role:'Boarder'},
-  {id:'p11',name:'Mani',         role:'Boarder'},
-  {id:'p12',name:'Bri',          role:'Boarder'},
-  {id:'p13',name:'Charlie',      role:'Boarder'},
+  {id:'p1', name:'Emily',       role:'Boarder'},
+  {id:'p2', name:'Christy',      role:'Boarder'},
+  {id:'p3', name:'Grace Owsley', role:'Trainer'},
+  {id:'p4', name:'Laine',        role:'Manager'},
+  {id:'p5', name:'Stephanie',    role:'Boarder'},
+  {id:'p6', name:'Laine',        role:'Boarder'},
+  {id:'p7', name:'Laurel',       role:'Boarder'},
+  {id:'p8', name:'Maddie',       role:'Boarder'},
+  {id:'p9', name:'Mani',         role:'Boarder'},
+  {id:'p10',name:'Bri',          role:'Boarder'},
+  {id:'p11',name:'Charlie',      role:'Boarder'},
+  {id:'p12',name:'Eileen',       role:'Manager'},
+  {id:'p13',name:'Stoney',       role:'Staff'},
 ];
 
 const STATIC_THREADS=[
-  {id:'t1',name:'Marisol Vega',  role:'Boarder',    unread:true, time:'9:12 AM',  snippet:"Could we move Reno's Thursday les...", msgs:[
+  {id:'t1',name:'Emily',         role:'Boarder',    unread:true, time:'9:12 AM',  snippet:"Could Georgia get extra hay this week?", msgs:[
     {me:false,t:'8:58 AM',x:'Morning! Hope all is well at the barn 🐴'},
-    {me:false,t:'9:12 AM',x:"Could we move Reno's Thursday lesson to 4pm? Work ran late this week."},
-    {me:true, t:'9:20 AM',x:"Morning Marisol! 4pm in the Covered Arena works — I'll update the calendar."},
+    {me:false,t:'9:12 AM',x:"Could Georgia have extra hay this week? She looks a bit thin."},
+    {me:true, t:'9:20 AM',x:"Morning Emily! Absolutely — I'll let the team know to add an extra flake at PM feed."},
   ]},
-  {id:'t2',name:'Luis Romero',   role:'Head Groom', unread:true, time:'8:40 AM',  snippet:'Heads up — the trough in Barn B is le...', msgs:[
-    {me:false,t:'8:40 AM',x:'Heads up — the trough in Barn B is leaking again, shut the valve for now.'},
-    {me:true, t:'8:45 AM',x:"Thanks Luis. I'll add it to today's tasks and call the plumber."},
+  {id:'t2',name:'Sam Okafor',    role:'Trainer',    unread:true, time:'8:40 AM',  snippet:'Arena drag done after group lesson...', msgs:[
+    {me:false,t:'8:40 AM',x:'Arena drag done after group lesson. All horses looked great today!'},
+    {me:true, t:'8:45 AM',x:"Thanks Sam! Go ahead and add Santana to tomorrow's 2pm slot."},
   ]},
   {id:'t3',name:'Barn Staff',    role:'Group · 4',  unread:false,time:'Yesterday', snippet:'Sam: Arena drag done, footing is great...', color:'#4a6741', msgs:[
-    {me:false,t:'7:30 AM',x:'Becca: Stalls 1–6 mucked, geldings turned out.'},
+    {me:false,t:'7:30 AM',x:'Angela: Stalls 1–6 mucked, horses turned out.'},
     {me:false,t:'7:55 AM',x:'Sam: Arena drag done, footing is great for lessons today.'},
     {me:true, t:'8:05 AM',x:"Perfect, thanks team. Rain expected tonight — blanket list is on the board."},
   ]},
@@ -1953,8 +1953,10 @@ function App(){
   const [shellKey,setShellKey]=React.useState(0);
   // Called by db.sync.js after Supabase data lands in localStorage
   React.useEffect(()=>{
-    window.__reloadDashboard=()=>setShellKey(k=>k+1);
-    return ()=>{delete window.__reloadDashboard;};
+    const reload = ()=>setShellKey(k=>k+1);
+    window.__reloadDashboard = reload;
+    window.addEventListener('db-sync-refresh', reload);
+    return ()=>{delete window.__reloadDashboard; window.removeEventListener('db-sync-refresh', reload);};
   },[]);
   if(!auth)return <LoginScreen onLogin={setAuth}/>;
   return <AppShell key={shellKey} auth={auth} onLogout={()=>{db.logout();setAuth(null);}}/>;
