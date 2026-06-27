@@ -1033,7 +1033,7 @@ function Billing(){
   return <div className="mod">
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
       <div><div style={{fontFamily:'Spectral,serif',fontSize:24,fontWeight:600,color:'#23201C'}}>Billing</div><div style={{fontSize:12.5,color:'#8A8170',marginTop:3}}>{invoices.length} invoices</div></div>
-      <Btn onClick={()=>{setF(EI);setM(true);}}>+ New invoice</Btn>
+      <Btn onClick={()=>{const p=itemPrices['Full board'];setF({...EI,lines:[{horseId:'',description:'Full board',amount:p>0?String(p):''}]});setM(true);}}>+ New invoice</Btn>
     </div>
     <div style={{display:'grid',gridTemplateColumns:window.innerWidth<768?'1fr 1fr':'repeat(3,1fr)',gap:14,marginBottom:20}}>
       {[['Collected',fM(paid),'Paid','#3C7A57'],['Outstanding',fM(out),'Awaiting',out?'#B4502E':'#23201C'],['Total',fM(paid+out),'Billed','#23201C']].map(([l,v,s,c])=><Card key={l} p="15px 17px">
@@ -1100,8 +1100,7 @@ function Billing(){
       </div>
     </Card>
     <Modal open={modal} onClose={()=>{setM(false);setF(EI);}} title="Create invoice" w={640}
-      footer={<><Btn v="secondary" onClick={()=>{setM(false);setF(EI);}}>Cancel</Btn><Btn onClick={save} disabled={!form.boarderId||!form.lines.some(l=>l.description&&l.amount)}>Create invoice</Btn></>}>
-      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      footer={<><Btn v="secondary" onClick={()=>{setM(false);setF(EI);}}>Cancel</Btn><Btn onClick={save} disabled={!form.boarderId||!form.lines.some(l=>l.description&&l.amount)}>Create invoice</Btn></>}>\n      <div style={{display:'flex',flexDirection:'column',gap:14}}>
         <G2>
           <Sel label="Boarder" value={form.boarderId} onChange={v=>setF(f=>({...f,boarderId:v}))} opts={[['','— Select boarder'],...boarders.map(b=>[String(b.id),b.name+(b.rate?` — $${b.rate}/mo`:'')])]} req/>
           <Inp label="Period" value={form.period} onChange={up('period')} placeholder="2026-06"/>
