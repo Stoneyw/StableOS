@@ -111,6 +111,35 @@ const CH=({title,action})=><div style={{display:'flex',alignItems:'center',justi
 </div>;
 const G2=({children,gap=14})=>{const m=window.innerWidth<768;return <div style={{display:'grid',gridTemplateColumns:m?'1fr':'1fr 1fr',gap}}>{children}</div>;};
 
+/* ─── Recurrence ─── */
+const RECUR_OPTS=[['none','One-time'],['daily','Daily'],['weekly','Weekly'],['biweekly','Biweekly'],['monthly','Monthly'],['bimonthly','Every 2 mo']];
+const RECUR_LBL={none:'',daily:'Daily',weekly:'Weekly',biweekly:'Biweekly',monthly:'Monthly',bimonthly:'Every 2 months'};
+const RECUR_COUNTS={daily:14,weekly:8,biweekly:8,monthly:6,bimonthly:6};
+const genRecurDates=(startDate,recurrence)=>{
+  if(!recurrence||recurrence==='none')return[startDate];
+  const dates=[];const d=new Date(startDate+'T12:00');
+  const count=RECUR_COUNTS[recurrence]||1;
+  for(let i=0;i<count;i++){
+    const x=new Date(d);x.setHours(12,0,0,0);
+    dates.push(x.toISOString().split('T')[0]);
+    if(recurrence==='daily')d.setDate(d.getDate()+1);
+    else if(recurrence==='weekly')d.setDate(d.getDate()+7);
+    else if(recurrence==='biweekly')d.setDate(d.getDate()+14);
+    else if(recurrence==='monthly')d.setMonth(d.getMonth()+1);
+    else if(recurrence==='bimonthly')d.setMonth(d.getMonth()+2);
+  }
+  return dates;
+};
+function RecurrencePicker({value='none',onChange}){
+  return <div>
+    <label style={{display:'block',fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:7}}>Repeat</label>
+    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+      {RECUR_OPTS.map(([v,lbl])=><button key={v} type="button" onClick={()=>onChange(v)}
+        style={{padding:'5px 12px',borderRadius:20,border:`1.5px solid ${value===v?'#3C7A57':'#E4D9C0'}`,background:value===v?'#3C7A57':'transparent',color:value===v?'#fff':'#7c7363',fontSize:12.5,fontWeight:600,cursor:'pointer',fontFamily:"'Hanken Grotesk',sans-serif",transition:'all .12s'}}>{lbl}</button>)}
+    </div>
+  </div>;
+}
+
 /* ─── Login ─── */
 function LoginScreen({onLogin}){
   const [email,setEmail]=React.useState('');const [pw,setPw]=React.useState('');
@@ -721,7 +750,7 @@ function ArenaCalendar(){
   const [anchor,setAnchor]=React.useState(TODAY); // yyyy-mm-dd
   const [modal,setM]=React.useState(false);
   const [events,setEvents]=React.useState(()=>db.getEvents());
-  const [draft,setDraft]=React.useState({title:'',staffId:'',arena:'Covered Arena',type:'Lesson',date:TODAY,sH:'9',sM:'00',eH:'10',eM:'00'});
+  const [draft,setDraft]=React.useState({title:'',staffId:'',arena:'Covered Arena',type:'Lesson',date:TODAY,sH:'9',sM:'00',eH:'10',eM:'00',recurrence:'none'});
   const staff=db.getStaff();
   const setVw=v=>{setView(v);try{sessionStorage.setItem('sos_cal_view',v);}catch(e){}};
   const aDate=React.useMemo(()=>new Date(anchor+'T12:00'),[anchor]);
@@ -745,7 +774,12 @@ function ArenaCalendar(){
     const sH=parseFloat(draft.sH),sM=parseFloat(draft.sM)/60,eH=parseFloat(draft.eH),eM=parseFloat(draft.eM)/60;
     if(!draft.title.trim()||(eH+eM)<=(sH+sM))return;
     const pad=n=>String(Math.floor(n)).padStart(2,'0');
-    db.addEvent({title:draft.title,type:draft.type.toLowerCase().replace(' ','_'),arena:draft.arena,staffId:draft.staffId?Number(draft.staffId):null,startsAt:`${draft.date}T${pad(sH+sM)}:${String(Math.round(sM*60)).padStart(2,'0')}:00`,endsAt:`${draft.date}T${pad(eH+eM)}:${String(Math.round(eM*60)).padStart(2,'0')}:00`,notes:'',horseId:null});
+    const startTime=`T${pad(sH+sM)}:${String(Math.round(sM*60)).padStart(2,'0')}:00`;
+    const endTime=`T${pad(eH+eM)}:${String(Math.round(eM*60)).padStart(2,'0')}:00`;
+    const recurId=draft.recurrence&&draft.recurrence!=='none'?'rg_'+Date.now():null;
+    genRecurDates(draft.date,draft.recurrence).forEach(date=>{
+      db.addEvent({title:draft.title,type:draft.type.toLowerCase().replace(' ','_'),arena:draft.arena,staffId:draft.staffId?Number(draft.staffId):null,startsAt:`${date}${startTime}`,endsAt:`${date}${endTime}`,notes:'',horseId:null,recurringId:recurId,recurrenceType:draft.recurrence!=='none'?draft.recurrence:null});
+    });
     setEvents(db.getEvents());setM(false);
   };
   const del=id=>{db.deleteEvent(id);setEvents(db.getEvents());};
@@ -918,11 +952,26 @@ function ArenaCalendar(){
         <div><label style={{display:'block',fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:7}}>Event type</label>
           <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{Object.entries(TC).map(([t,c])=><button key={t} onClick={()=>setDraft(d=>({...d,type:t}))} style={{padding:'5px 12px',borderRadius:20,border:`1.5px solid ${draft.type===t?c:'#E4D9C0'}`,background:draft.type===t?c+'18':'transparent',color:draft.type===t?c:'#7c7363',fontSize:12.5,fontWeight:600,cursor:'pointer',fontFamily:"'Hanken Grotesk',sans-serif"}}>{t}</button>)}</div>
         </div>
+        <RecurrencePicker value={draft.recurrence||'none'} onChange={v=>setDraft(d=>({...d,recurrence:v}))}/>
+        {draft.recurrence&&draft.recurrence!=='none'&&<div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 13px',background:'#E5F0E7',border:'1px solid #B8D9C2',borderRadius:10,fontSize:12.5,color:'#2f5a42'}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C7A57" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v4h-4"/></svg>
+          Will book <strong style={{margin:'0 4px'}}>{RECUR_COUNTS[draft.recurrence]}</strong> {RECUR_LBL[draft.recurrence].toLowerCase()} sessions starting {fD(draft.date)}
+        </div>}
       </div>
     </Modal>
     <Modal open={!!editEv} onClose={()=>setEditEv(null)} title="Edit booking" w={440}
-      footer={<div style={{display:'flex',justifyContent:'space-between',width:'100%',alignItems:'center'}}><button onClick={()=>{del(editEv.id);setEditEv(null);}} style={{padding:'7px 13px',background:'#FBEAE2',color:'#B4502E',border:'none',borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete</button><div style={{display:'flex',gap:9}}><Btn v="secondary" onClick={()=>setEditEv(null)}>Cancel</Btn><Btn onClick={saveEditEv} disabled={!editDraft.title||!editDraft.title.trim()}>Save changes</Btn></div></div>}>
+      footer={<div style={{display:'flex',justifyContent:'space-between',width:'100%',alignItems:'center'}}>
+        <div style={{display:'flex',gap:6}}>
+          <button onClick={()=>{del(editEv.id);setEditEv(null);}} style={{padding:'7px 13px',background:'#FBEAE2',color:'#B4502E',border:'none',borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete</button>
+          {editEv&&editEv.recurringId&&<button onClick={()=>{if(!confirm('Delete all events in this series ('+ events.filter(e=>e.recurringId===editEv.recurringId).length +' total)?'))return;events.filter(e=>e.recurringId===editEv.recurringId).forEach(e=>db.deleteEvent(e.id));setEvents(db.getEvents());setEditEv(null);}} style={{padding:'7px 13px',background:'#FBEAE2',color:'#B4502E',border:'1px solid #F0B8A0',borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete series</button>}
+        </div>
+        <div style={{display:'flex',gap:9}}><Btn v="secondary" onClick={()=>setEditEv(null)}>Cancel</Btn><Btn onClick={saveEditEv} disabled={!editDraft.title||!editDraft.title.trim()}>Save changes</Btn></div>
+      </div>}>
       <div style={{display:'flex',flexDirection:'column',gap:13}}>
+        {editEv&&editEv.recurringId&&<div style={{display:'flex',alignItems:'center',gap:7,padding:'8px 12px',background:'#E5F0E7',border:'1px solid #B8D9C2',borderRadius:9,fontSize:12.5,color:'#2f5a42',fontWeight:600}}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3C7A57" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v4h-4"/></svg>
+          ↻ {RECUR_LBL[editEv.recurrenceType]||'Recurring'} series · editing this booking only
+        </div>}
         <Inp label="Event title" value={editDraft.title||''} onChange={v=>setED(d=>({...d,title:v}))} req/>
         <G2><Inp label="Date" value={editDraft.date||''} onChange={v=>setED(d=>({...d,date:v}))} type="date"/><Sel label="Arena" value={editDraft.arena||'Covered Arena'} onChange={v=>setED(d=>({...d,arena:v}))} opts={ARENAS}/></G2>
         <Sel label="Staff" value={editDraft.staffId||''} onChange={v=>setED(d=>({...d,staffId:v}))} opts={[['','— TBD'],...staff.map(s=>[String(s.id),s.name])]}/>
@@ -953,15 +1002,23 @@ function ArenaCalendar(){
 }
 
 /* ─── Daily Tasks ─── */
-const ET={title:'',assigneeId:'',dueOn:TODAY,priority:'normal'};
+const ET={title:'',assigneeId:'',dueOn:TODAY,priority:'normal',recurrence:'none'};
 function DailyTasks(){
   const [tasks,setT]=React.useState(()=>db.getTasks());const [modal,setM]=React.useState(null);const [form,setF]=React.useState(ET);const [filter,setFl]=React.useState('pending');
   const up=k=>v=>setF(f=>({...f,[k]:v}));const staff=db.getStaff();const ref=()=>setT(db.getTasks());
-  const openEdit=t=>{setF({title:t.title,assigneeId:String(t.assigneeId||''),dueOn:t.dueOn||TODAY,priority:t.priority||'normal'});setM(t);};
+  const openEdit=t=>{setF({title:t.title,assigneeId:String(t.assigneeId||''),dueOn:t.dueOn||TODAY,priority:t.priority||'normal',recurrence:t.recurrenceType||'none'});setM(t);};
   const save=()=>{
     if(!form.title)return;
-    if(modal==='add'){db.addTask({...form,assigneeId:form.assigneeId?Number(form.assigneeId):null});}
-    else{db.updateTask(modal.id,{...form,assigneeId:form.assigneeId?Number(form.assigneeId):null});}
+    if(modal==='add'){
+      if(form.recurrence&&form.recurrence!=='none'){
+        const recurId='rg_'+Date.now();
+        genRecurDates(form.dueOn||TODAY,form.recurrence).forEach(date=>{
+          db.addTask({...form,dueOn:date,assigneeId:form.assigneeId?Number(form.assigneeId):null,recurringId:recurId,recurrenceType:form.recurrence});
+        });
+      }else{
+        db.addTask({...form,assigneeId:form.assigneeId?Number(form.assigneeId):null});
+      }
+    }else{db.updateTask(modal.id,{...form,assigneeId:form.assigneeId?Number(form.assigneeId):null});}
     ref();setM(null);setF(ET);
   };
   const shown=filter==='all'?tasks:filter==='done'?tasks.filter(t=>t.done):tasks.filter(t=>!t.done);
@@ -980,18 +1037,33 @@ function DailyTasks(){
         <div onClick={()=>{db.toggleTask(t.id);ref();}} style={{width:20,height:20,borderRadius:6,border:`2px solid ${t.done?'#3C7A57':'#cfc3a8'}`,background:t.done?'#3C7A57':'#fff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,marginTop:1,transition:'all .15s'}}>
           {t.done&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>}
         </div>
-        <div style={{flex:1}}><div style={{fontSize:14,color:t.done?'#9a9081':'#2f2a23',textDecoration:t.done?'line-through':'none'}}>{t.title}</div><div style={{fontSize:12,color:'#9a9081',marginTop:3,display:'flex',gap:10}}>{t.assigneeId&&<span>👤 {uN(t.assigneeId)}</span>}{t.dueOn&&<span>📅 {fD(t.dueOn)}</span>}</div></div>
+        <div style={{flex:1}}><div style={{fontSize:14,color:t.done?'#9a9081':'#2f2a23',textDecoration:t.done?'line-through':'none'}}>{t.title}</div><div style={{fontSize:12,color:'#9a9081',marginTop:3,display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>{t.assigneeId&&<span>👤 {uN(t.assigneeId)}</span>}{t.dueOn&&<span>📅 {fD(t.dueOn)}</span>}{t.recurringId&&<span style={{color:'#3C7A57',fontWeight:700,display:'inline-flex',alignItems:'center',gap:3}}>↻ {RECUR_LBL[t.recurrenceType]||'Recurring'}</span>}</div></div>
         <Pill label={t.priority} color={ps.c} bg={ps.bg} bdr={ps.bdr}/>
         <button onClick={()=>openEdit(t)} style={{width:28,height:28,borderRadius:7,border:'1px solid #E4D9C0',background:'#FBF6EC',color:'#9c7026',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,padding:0}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
         <button onClick={()=>{if(!confirm('Delete?'))return;db.deleteTask(t.id);ref();}} style={{padding:'4px 8px',fontSize:11,fontWeight:600,color:'#B4502E',background:'#FBEAE2',border:'none',borderRadius:6,cursor:'pointer',flexShrink:0}}>✕</button>
       </div>;})}
     </Card>
     <Modal open={!!modal} onClose={()=>setM(null)} title={modal==='add'?'Add task':'Edit task'}
-      footer={<div style={{display:'flex',justifyContent:'space-between',width:'100%',alignItems:'center'}}>{modal&&modal!=='add'&&<button onClick={()=>{if(!confirm('Delete?'))return;db.deleteTask(modal.id);ref();setM(null);}} style={{padding:'7px 13px',background:'#FBEAE2',color:'#B4502E',border:'none',borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete</button>}<div style={{display:'flex',gap:9,marginLeft:'auto'}}><Btn v="secondary" onClick={()=>setM(null)}>Cancel</Btn><Btn onClick={save} disabled={!form.title}>{modal==='add'?'Add task':'Save changes'}</Btn></div></div>}>
+      footer={<div style={{display:'flex',justifyContent:'space-between',width:'100%',alignItems:'center'}}>
+        {modal&&modal!=='add'&&<div style={{display:'flex',gap:6}}>
+          <button onClick={()=>{if(!confirm('Delete?'))return;db.deleteTask(modal.id);ref();setM(null);}} style={{padding:'7px 13px',background:'#FBEAE2',color:'#B4502E',border:'none',borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete</button>
+          {modal.recurringId&&<button onClick={()=>{if(!confirm('Delete all tasks in this series ('+tasks.filter(t=>t.recurringId===modal.recurringId).length+' total)?'))return;tasks.filter(t=>t.recurringId===modal.recurringId).forEach(t=>db.deleteTask(t.id));ref();setM(null);}} style={{padding:'7px 13px',background:'#FBEAE2',color:'#B4502E',border:'1px solid #F0B8A0',borderRadius:9,fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer'}}>Delete series</button>}
+        </div>}
+        <div style={{display:'flex',gap:9,marginLeft:'auto'}}><Btn v="secondary" onClick={()=>setM(null)}>Cancel</Btn><Btn onClick={save} disabled={!form.title}>{modal==='add'?'Add task':'Save changes'}</Btn></div>
+      </div>}>
       <div style={{display:'flex',flexDirection:'column',gap:13}}>
         <Inp label="Task" value={form.title} onChange={up('title')} placeholder="e.g. Muck stalls 1–3" req/>
         <G2><Sel label="Assign to" value={form.assigneeId} onChange={up('assigneeId')} opts={[['','— Unassigned'],...staff.map(s=>[String(s.id),s.name])]}/><Sel label="Priority" value={form.priority} onChange={up('priority')} opts={[['high','High'],['normal','Normal'],['low','Low']]}/></G2>
         <Inp label="Due date" value={form.dueOn} onChange={up('dueOn')} type="date"/>
+        {modal==='add'&&<RecurrencePicker value={form.recurrence||'none'} onChange={up('recurrence')}/>}
+        {modal==='add'&&form.recurrence&&form.recurrence!=='none'&&<div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 13px',background:'#E5F0E7',border:'1px solid #B8D9C2',borderRadius:10,fontSize:12.5,color:'#2f5a42'}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C7A57" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v4h-4"/></svg>
+          Will create <strong style={{margin:'0 4px'}}>{RECUR_COUNTS[form.recurrence]}</strong> {RECUR_LBL[form.recurrence].toLowerCase()} tasks starting {fD(form.dueOn||TODAY)}
+        </div>}
+        {modal!=='add'&&modal&&modal.recurringId&&<div style={{display:'flex',alignItems:'center',gap:7,padding:'8px 12px',background:'#E5F0E7',border:'1px solid #B8D9C2',borderRadius:9,fontSize:12.5,color:'#2f5a42'}}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3C7A57" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v4h-4"/></svg>
+          ↻ {RECUR_LBL[modal.recurrenceType]||'Recurring'} series · editing this task only
+        </div>}
       </div>
     </Modal>
   </div>;
@@ -1000,7 +1072,7 @@ function DailyTasks(){
 /* ─── Billing ─── */
 const INV_DESCS=['Full board','Partial board','Stall rental','Hay — Round bales','Hay — Square bales','Grain / feed supplement','Bedding / shavings','Arena rental','Training session','Farrier (pass-through)','Vet (pass-through)','Blanket cleaning','Trailer fee','Show entry fee','Medication (pass-through)','Lessons','Other'];
 const DFLT_ITEM_PRICES={'Full board':600,'Partial board':400,'Stall rental':650,'Hay — Round bales':80,'Hay — Square bales':50,'Grain / feed supplement':40,'Bedding / shavings':35,'Arena rental':25,'Training session':75,'Farrier (pass-through)':120,'Vet (pass-through)':0,'Blanket cleaning':25,'Trailer fee':150,'Show entry fee':0,'Medication (pass-through)':0,'Lessons':65,'Other':0};
-const EI={boarderId:'',period:new Date().toISOString().slice(0,7),lines:[{horseId:'',description:'Full board',amount:''}]};
+const EI={boarderId:'',period:new Date().toISOString().slice(0,7),dueOn:'',lines:[{horseId:'',description:'Full board',amount:''}]};
 function Billing(){
   const [itemPrices,setItemPrices]=React.useState(()=>JSON.parse(localStorage.getItem('stableos_itemprices')||JSON.stringify(DFLT_ITEM_PRICES)));
   const [itemPricesEdit,setItemPricesEdit]=React.useState(false);
@@ -1020,20 +1092,20 @@ function Billing(){
     const total=validLines.reduce((s,l)=>s+Number(l.amount),0);
     const lines=validLines.map(l=>({description:l.description,qty:1,unitPrice:Number(l.amount),horseId:l.horseId?Number(l.horseId):null}));
     const primaryHorse=validLines.find(l=>l.horseId);
-    db.addInvoice({boarderId:Number(form.boarderId),horseId:primaryHorse?Number(primaryHorse.horseId):null,period:form.period,amount:total,description:validLines.map(l=>l.description).join(', '),status:'sent',lines});
+    db.addInvoice({boarderId:Number(form.boarderId),horseId:primaryHorse?Number(primaryHorse.horseId):null,period:form.period,dueOn:form.dueOn||null,amount:total,description:validLines.map(l=>l.description).join(', '),status:'sent',lines});
     ref();setM(false);setF(EI);
   };
   const [editInv,setEditInv]=React.useState(null);
   const [eF,setEF]=React.useState({});
-  const openEditInv=inv=>{setEF({boarderId:String(inv.boarderId||''),horseId:String(inv.horseId||''),description:inv.lines?.[0]?.description||'',amount:String(inv.amount||''),status:inv.status,period:inv.period||''});setEditInv(inv);};
-  const saveEditInv=()=>{if(!eF.amount)return;db.updateInvoice(editInv.id,{boarderId:eF.boarderId?Number(eF.boarderId):null,horseId:eF.horseId?Number(eF.horseId):null,amount:Number(eF.amount),status:eF.status,period:eF.period,lines:[{description:eF.description,qty:1,unitPrice:Number(eF.amount)}]});ref();setEditInv(null);};
+  const openEditInv=inv=>{setEF({boarderId:String(inv.boarderId||''),horseId:String(inv.horseId||''),description:inv.lines?.[0]?.description||'',amount:String(inv.amount||''),status:inv.status,period:inv.period||'',dueOn:inv.dueOn||''});setEditInv(inv);};
+  const saveEditInv=()=>{if(!eF.amount)return;db.updateInvoice(editInv.id,{boarderId:eF.boarderId?Number(eF.boarderId):null,horseId:eF.horseId?Number(eF.horseId):null,amount:Number(eF.amount),status:eF.status,period:eF.period,dueOn:eF.dueOn||null,lines:[{description:eF.description,qty:1,unitPrice:Number(eF.amount)}]});ref();setEditInv(null);};
   const paid=invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+i.amount,0);
   const out=invoices.filter(i=>['sent','overdue'].includes(i.status)).reduce((s,i)=>s+i.amount,0);
   const SS={paid:{c:'#3C7A57',bg:'#E5F0E7',bdr:'#c4dcc9'},sent:{c:'#2A6FDB',bg:'#EBF4FF',bdr:'#B8D4F5'},overdue:{c:'#B4502E',bg:'#FBEAE2',bdr:'#F0B8A0'},draft:{c:'#5a5345',bg:'#F1EADA',bdr:'#E4D9C0'}};
   return <div className="mod">
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
       <div><div style={{fontFamily:'Spectral,serif',fontSize:24,fontWeight:600,color:'#23201C'}}>Billing</div><div style={{fontSize:12.5,color:'#8A8170',marginTop:3}}>{invoices.length} invoices</div></div>
-      <Btn onClick={()=>{const p=itemPrices['Full board'];setF({...EI,lines:[{horseId:'',description:'Full board',amount:p>0?String(p):''}]});setM(true);}}>+ New invoice</Btn>
+      <Btn onClick={()=>{const p=itemPrices['Full board'];const dfDue=new Date(Date.now()+30*86400000).toISOString().split('T')[0];setF({...EI,dueOn:dfDue,lines:[{horseId:'',description:'Full board',amount:p>0?String(p):''}]});setM(true);}}>+ New invoice</Btn>
     </div>
     <div style={{display:'grid',gridTemplateColumns:window.innerWidth<768?'1fr 1fr':'repeat(3,1fr)',gap:14,marginBottom:20}}>
       {[['Collected',fM(paid),'Paid','#3C7A57'],['Outstanding',fM(out),'Awaiting',out?'#B4502E':'#23201C'],['Total',fM(paid+out),'Billed','#23201C']].map(([l,v,s,c])=><Card key={l} p="15px 17px">
@@ -1105,6 +1177,7 @@ function Billing(){
           <Sel label="Boarder" value={form.boarderId} onChange={v=>setF(f=>({...f,boarderId:v}))} opts={[['','— Select boarder'],...boarders.map(b=>[String(b.id),b.name+(b.rate?` — $${b.rate}/mo`:'')])]} req/>
           <Inp label="Period" value={form.period} onChange={up('period')} placeholder="2026-06"/>
         </G2>
+        <Inp label="Due date" value={form.dueOn} onChange={up('dueOn')} type="date"/>
         {/* Line items */}
         <div style={{display:'flex',flexDirection:'column',gap:0,border:'1px solid #E8DFCC',borderRadius:12,overflow:'hidden'}}>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1.6fr 90px 32px',gap:10,padding:'8px 14px',background:'#FBF6EC',borderBottom:'1px solid #EDE6D5',fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5}}>
@@ -1140,6 +1213,7 @@ function Billing(){
         <G2><Sel label="Boarder" value={eF.boarderId||''} onChange={v=>setEF(f=>({...f,boarderId:v}))} opts={[['','— Select boarder'],...boarders.map(b=>[String(b.id),b.name])]}/><Sel label="Horse" value={eF.horseId||''} onChange={v=>setEF(f=>({...f,horseId:v}))} opts={[['','— Select horse'],...horses.map(h=>[String(h.id),h.name])]}/></G2>
         <Sel label="Description" value={eF.description||'Full board'} onChange={v=>{const p=itemPrices[v];setEF(f=>({...f,description:v,amount:p!=null&&p>0&&!f.amount?String(p):f.amount}));}} opts={INV_DESCS.map(d=>[d,itemPrices[d]>0?`${d} — $${itemPrices[d]}`:d])}/>
         <G2><Inp label="Amount ($)" value={eF.amount||''} onChange={v=>setEF(f=>({...f,amount:v}))} type="number" placeholder="600" req/><Inp label="Period" value={eF.period||''} onChange={v=>setEF(f=>({...f,period:v}))} placeholder="2026-06"/></G2>
+        <Inp label="Due date" value={eF.dueOn||''} onChange={v=>setEF(f=>({...f,dueOn:v}))} type="date"/>
         <Sel label="Status" value={eF.status||'sent'} onChange={v=>setEF(f=>({...f,status:v}))} opts={[['sent','Sent — awaiting payment'],['paid','Paid'],['overdue','Overdue'],['draft','Draft']]}/>
       </div>
     </Modal>
