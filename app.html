@@ -1000,7 +1000,7 @@ function DailyTasks(){
 /* ─── Billing ─── */
 const INV_DESCS=['Full board','Partial board','Stall rental','Hay — Round bales','Hay — Square bales','Grain / feed supplement','Bedding / shavings','Arena rental','Training session','Farrier (pass-through)','Vet (pass-through)','Blanket cleaning','Trailer fee','Show entry fee','Medication (pass-through)','Lessons','Other'];
 const DFLT_ITEM_PRICES={'Full board':600,'Partial board':400,'Stall rental':650,'Hay — Round bales':80,'Hay — Square bales':50,'Grain / feed supplement':40,'Bedding / shavings':35,'Arena rental':25,'Training session':75,'Farrier (pass-through)':120,'Vet (pass-through)':0,'Blanket cleaning':25,'Trailer fee':150,'Show entry fee':0,'Medication (pass-through)':0,'Lessons':65,'Other':0};
-const EI={boarderId:'',horseId:'',period:new Date().toISOString().slice(0,7),description:'Full board',amount:''};
+const EI={boarderId:'',period:new Date().toISOString().slice(0,7),lines:[{horseId:'',description:'Full board',amount:''}]};
 function Billing(){
   const [itemPrices,setItemPrices]=React.useState(()=>JSON.parse(localStorage.getItem('stableos_itemprices')||JSON.stringify(DFLT_ITEM_PRICES)));
   const [itemPricesEdit,setItemPricesEdit]=React.useState(false);
@@ -1013,7 +1013,16 @@ function Billing(){
   const saveRates=r=>{localStorage.setItem('stableos_boardrates',JSON.stringify(r));setRates(r);setRatesEdit(false);};
   const [invoices,setInv]=React.useState(()=>db.getInvoices());const [modal,setM]=React.useState(false);const [form,setF]=React.useState(EI);
   const up=k=>v=>setF(f=>({...f,[k]:v}));const horses=db.getHorses({status:'active'});const boarders=db.getBoarders();const ref=()=>setInv(db.getInvoices());
-  const save=()=>{if(!form.boarderId||!form.amount)return;db.addInvoice({boarderId:Number(form.boarderId),horseId:form.horseId?Number(form.horseId):null,period:form.period,amount:Number(form.amount),dueOn:TODAY,lines:[{description:form.description,qty:1,unitPrice:Number(form.amount)}]});ref();setM(false);setF(EI);};
+  const save=()=>{
+    if(!form.boarderId||!form.lines.length)return;
+    const validLines=form.lines.filter(l=>l.description&&l.amount);
+    if(!validLines.length)return;
+    const total=validLines.reduce((s,l)=>s+Number(l.amount),0);
+    const lines=validLines.map(l=>({description:l.description,qty:1,unitPrice:Number(l.amount),horseId:l.horseId?Number(l.horseId):null}));
+    const primaryHorse=validLines.find(l=>l.horseId);
+    db.addInvoice({boarderId:Number(form.boarderId),horseId:primaryHorse?Number(primaryHorse.horseId):null,period:form.period,amount:total,description:validLines.map(l=>l.description).join(', '),status:'sent',lines});
+    ref();setM(false);setF(EI);
+  };
   const [editInv,setEditInv]=React.useState(null);
   const [eF,setEF]=React.useState({});
   const openEditInv=inv=>{setEF({boarderId:String(inv.boarderId||''),horseId:String(inv.horseId||''),description:inv.lines?.[0]?.description||'',amount:String(inv.amount||''),status:inv.status,period:inv.period||''});setEditInv(inv);};
@@ -1090,12 +1099,40 @@ function Billing(){
         ))}
       </div>
     </Card>
-    <Modal open={modal} onClose={()=>setM(false)} title="Create invoice"
-      footer={<><Btn v="secondary" onClick={()=>setM(false)}>Cancel</Btn><Btn onClick={save} disabled={!form.boarderId||!form.amount}>Create</Btn></>}>
-      <div style={{display:'flex',flexDirection:'column',gap:13}}>
-        <G2><Sel label="Boarder" value={form.boarderId} onChange={v=>{const b=boarders.find(x=>String(x.id)===v);const h=form.horseId?horses.find(x=>String(x.id)===form.horseId):null;const amt=b?.rate||(h?rates[h.boardType]:null)||'';setF(f=>({...f,boarderId:v,amount:amt?String(amt):f.amount}));}} opts={[['','— Select boarder'],...boarders.map(b=>[String(b.id),b.name+(b.rate?` — $${b.rate}/mo`:'')])]} req/><Sel label="Horse" value={form.horseId} onChange={v=>{const h=horses.find(x=>String(x.id)===v);const b=form.boarderId?boarders.find(x=>String(x.id)===form.boarderId):null;const amt=b?.rate||(h?rates[h.boardType]:null)||'';setF(f=>({...f,horseId:v,amount:amt?String(amt):f.amount}));}} opts={[['','— Select horse'],...horses.map(h=>[String(h.id),h.name+' ('+h.boardType+')'])]}/></G2>
-        <Sel label="Description" value={form.description} onChange={v=>{const p=itemPrices[v];setF(f=>({...f,description:v,amount:p!=null&&p>0?String(p):f.amount}));}} opts={INV_DESCS.map(d=>[d,itemPrices[d]>0?`${d} — $${itemPrices[d]}`:d])}/>
-        <G2><Inp label="Amount ($)" value={form.amount} onChange={up('amount')} type="number" placeholder="600" req/><Inp label="Period" value={form.period} onChange={up('period')} placeholder="2026-06"/></G2>
+    <Modal open={modal} onClose={()=>{setM(false);setF(EI);}} title="Create invoice" w={640}
+      footer={<><Btn v="secondary" onClick={()=>{setM(false);setF(EI);}}>Cancel</Btn><Btn onClick={save} disabled={!form.boarderId||!form.lines.some(l=>l.description&&l.amount)}>Create invoice</Btn></>}>
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        <G2>
+          <Sel label="Boarder" value={form.boarderId} onChange={v=>setF(f=>({...f,boarderId:v}))} opts={[['','— Select boarder'],...boarders.map(b=>[String(b.id),b.name+(b.rate?` — $${b.rate}/mo`:'')])]} req/>
+          <Inp label="Period" value={form.period} onChange={up('period')} placeholder="2026-06"/>
+        </G2>
+        {/* Line items */}
+        <div style={{display:'flex',flexDirection:'column',gap:0,border:'1px solid #E8DFCC',borderRadius:12,overflow:'hidden'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1.6fr 90px 32px',gap:10,padding:'8px 14px',background:'#FBF6EC',borderBottom:'1px solid #EDE6D5',fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5}}>
+            <div>Horse</div><div>Service / Description</div><div>Amount</div><div></div>
+          </div>
+          {form.lines.map((line,i)=>(
+            <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 1.6fr 90px 32px',gap:10,padding:'10px 14px',borderBottom:i<form.lines.length-1?'1px solid #F2EAD8':'none',alignItems:'center',background:'#fff'}}>
+              <select value={line.horseId} onChange={e=>setF(f=>({...f,lines:f.lines.map((l,j)=>j===i?{...l,horseId:e.target.value}:l)}))} style={{width:'100%',padding:'7px 10px',border:'1px solid #E2D8C4',borderRadius:8,fontFamily:'inherit',fontSize:13,background:'#fff',color:'#2f2a23'}}>
+                <option value="">— Horse</option>
+                {horses.map(h=><option key={h.id} value={String(h.id)}>{h.name}</option>)}
+              </select>
+              <select value={line.description} onChange={e=>{const v=e.target.value;const p=itemPrices[v];setF(f=>({...f,lines:f.lines.map((l,j)=>j===i?{...l,description:v,amount:p>0?String(p):l.amount}:l)}));}} style={{width:'100%',padding:'7px 10px',border:'1px solid #E2D8C4',borderRadius:8,fontFamily:'inherit',fontSize:13,background:'#fff',color:'#2f2a23'}}>
+                {INV_DESCS.map(d=><option key={d} value={d}>{itemPrices[d]>0?`${d} — $${itemPrices[d]}`:d}</option>)}
+              </select>
+              <input type="number" value={line.amount} onChange={e=>setF(f=>({...f,lines:f.lines.map((l,j)=>j===i?{...l,amount:e.target.value}:l)}))} placeholder="0" style={{width:'100%',padding:'7px 10px',border:'1px solid #E2D8C4',borderRadius:8,fontFamily:'inherit',fontSize:13,color:'#2f2a23',textAlign:'right'}}/>
+              <button onClick={()=>form.lines.length>1&&setF(f=>({...f,lines:f.lines.filter((_,j)=>j!==i)}))} style={{width:28,height:28,borderRadius:7,border:'none',background:form.lines.length>1?'#FBEAE2':'#F5F0E8',color:form.lines.length>1?'#B4502E':'#ccc',cursor:form.lines.length>1?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700,flexShrink:0}}>×</button>
+            </div>
+          ))}
+          <div style={{padding:'10px 14px',background:'#FDFAF5',borderTop:'1px solid #EDE6D5',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={()=>setF(f=>({...f,lines:[...f.lines,{horseId:'',description:'Full board',amount:''}]}))} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#3C7A57',fontFamily:'inherit',fontSize:13,fontWeight:700,cursor:'pointer',padding:0}}>
+              <span style={{fontSize:18,lineHeight:1}}>+</span> Add line item
+            </button>
+            <div style={{fontSize:13,fontWeight:700,color:'#1C3A2E'}}>
+              Total: <span style={{fontSize:16,marginLeft:4}}>${form.lines.reduce((s,l)=>s+(Number(l.amount)||0),0).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </Modal>
     <Modal open={!!editInv} onClose={()=>setEditInv(null)} title={editInv?`Edit ${editInv.number}`:''}
