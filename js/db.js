@@ -46,7 +46,7 @@
       { id:10, companyId:1, name:"Maddie",        email:"maddie@gmail.com",            password:"stable123",   role:"boarder", avatar:"MA", phone:"971-228-9916" },
       { id:11, companyId:1, name:"Mani",          email:"mani@gmail.com",              password:"stable123",   role:"boarder", avatar:"MA", phone:"254-624-0966" },
       { id:12, companyId:1, name:"Bri",           email:"bri@gmail.com",               password:"stable123",   role:"boarder", avatar:"BR", phone:"512-796-1931" },
-      { id:13, companyId:1, name:"Charlie",       email:"charlie@gmail.com",           password:"stable123",   role:"boarder", avatar:"CH", phone:"512-549-0051" },
+      { id:13, companyId:1, name:"Charlie",       email:"charlie@gmail.com",           password:"stable123",   role:"boarder,trainer", avatar:"CH", phone:"512-549-0051" },
       { id:16, companyId:1, name:"Grace Owsley",  email:"grace@thewinnersstable.com",  password:"stable123",   role:"trainer", avatar:"GR" }
     );
     S.horses.push(
@@ -361,8 +361,8 @@
     // ── Users (current tenant) ──
     getUsers() { return co(data.users).map(u => ({ ...u, password: undefined })); },
     getUserById(id) { const u = data.users.find(x => x.id === id && x.companyId === cid()); return u ? { ...u, password: undefined } : null; },
-    getBoarders() { return co(data.users).filter(u => u.role === 'boarder').map(u => ({ ...u, password: undefined })); },
-    getStaff() { return co(data.users).filter(u => u.role !== 'boarder').map(u => ({ ...u, password: undefined })); },
+    getBoarders() { return co(data.users).filter(u => (u.role||'').split(',').includes('boarder')).map(u => ({ ...u, password: undefined })); },
+    getStaff()    { return co(data.users).filter(u => (u.role||'').split(',').some(r=>r!=='boarder')).map(u => ({ ...u, password: undefined })); },
     addUser(d) { const u = { id: nid(data.users), companyId: cid(), avatar: d.name.slice(0, 2).toUpperCase(), ...d }; data.users.push(u); save(); return { ...u, password: undefined }; },
     updateUser(id, d) {
       const i = data.users.findIndex(u => u.id === id && u.companyId === cid());

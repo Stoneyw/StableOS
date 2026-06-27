@@ -1669,6 +1669,18 @@ function Reports(){
 const UA_ROLE_STYLES={
   owner:  {label:'Stable Owner', c:'#23201C',bg:'#F1EADA',bdr:'#E4D9C0'},
   manager:{label:'Manager',      c:'#2A6FDB',bg:'#EBF4FF',bdr:'#B8D4F5'},
+  trainer:{label:'Trainer',      c:'#3C7A57',bg:'#EAF4EE',bdr:'#B8DFCA'},
+  staff:  {label:'Staff / Groom',c:'#7A4A2B',bg:'#FDF3EC',bdr:'#F0C8A0'},
+  boarder:{label:'Boarder',      c:'#5a5345',bg:'#F5F0E8',bdr:'#E4D9C0'},
+};
+const getRoles=u=>(u.role||'boarder').split(',').map(r=>r.trim()).filter(Boolean);
+const hasRole=(u,r)=>getRoles(u).includes(r);
+const ROLE_OPTS=[['owner','Stable Owner'],['manager','Manager'],['trainer','Trainer'],['staff','Staff / Groom'],['boarder','Boarder']];
+const RolePicker=({value,onChange})=>{
+  const selected=(value||'boarder').split(',').map(r=>r.trim()).filter(Boolean);
+  const toggle=r=>{const next=selected.includes(r)?selected.filter(x=>x!==r):[...selected,r];onChange(next.length?next.join(','):'boarder');};
+  return <div><div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Roles (select all that apply)</div><div style={{display:'flex',flexWrap:'wrap',gap:7}}>{ROLE_OPTS.map(([r,label])=>{const on=selected.includes(r);return <button key={r} type="button" onClick={()=>toggle(r)} style={{display:'flex',alignItems:'center',gap:5,padding:'6px 13px',borderRadius:20,border:`1.5px solid ${on?'#1C3A2E':'#E4D9C0'}`,background:on?'#1C3A2E':'#fff',color:on?'#F1EBDB':'#5a5345',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',transition:'.15s'}}>{on&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}{label}</button>;})}</div></div>;
+};
   trainer:{label:'Trainer',      c:'#3C7A57',bg:'#E5F0E7',bdr:'#B8D9C2'},
   staff:  {label:'Staff / Groom',c:'#9c7026',bg:'#F6ECD2',bdr:'#E2C68A'},
   boarder:{label:'Boarder',      c:'#5a5345',bg:'#F1EADA',bdr:'#E0D0B8'},
@@ -1679,7 +1691,7 @@ const PW_STYLES={
   none:     {label:'No password set',    dot:'#B4502E',c:'#B4502E',bg:'#FBEAE2',bdr:'#F0B8A0'},
 };
 // Simulate password status based on user id parity for demo
-const pwStatus=u=>u.id<=2?'active':u.role==='trainer'?'none':u.id%3===0?'none':u.id%2===0?'awaiting':'active';
+const pwStatus=u=>u.id<=2?'active':getRoles(u).includes('trainer')?'none':u.id%3===0?'none':u.id%2===0?'awaiting':'active';
 const lastSignIn=u=>u.id===1?'Today, 7:14 AM':u.id===2?'Today, 6:02 AM':u.id<=4?'Never':u.id===5?'Jun 15, 8:41 PM':u.id===6?'Jun 17, 9:10 AM':u.id===8?'Jun 15, 5:55 PM':'Never';
 
 function Settings(){
@@ -1698,8 +1710,8 @@ function Settings(){
   const removeUser=u=>{if(!window.confirm(`Remove ${u.name}?`))return;db.updateUser(u.id,{_deleted:true});setUsers(db.getUsers());setEU(null);};
 
   const allUsers = users.filter(u=>!u._deleted);
-  const staff    = allUsers.filter(u=>['owner','manager','trainer','staff'].includes(u.role));
-  const boarders = allUsers.filter(u=>u.role==='boarder');
+  const staff    = allUsers.filter(u=>getRoles(u).some(r=>['owner','manager','trainer','staff'].includes(r)));
+  const boarders = allUsers.filter(u=>hasRole(u,'boarder'));
   const shown    = tab==='staff'?staff:tab==='boarders'?boarders:allUsers;
   const awaiting = allUsers.filter(u=>pwStatus(u)!=='active').length;
 
@@ -1756,9 +1768,9 @@ function Settings(){
 
         {/* Rows */}
         {shown.map((u,i)=>{
-          const rs = UA_ROLE_STYLES[u.role]||UA_ROLE_STYLES.staff;
+          const roles = getRoles(u);
           const ps = PW_STYLES[pwStatus(u)];
-          const isBoarder = u.role==='boarder';
+          const isBoarder = hasRole(u,'boarder');
           const isEditingRate = editRate===u.id;
           return (
             <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1.1fr 1fr 1.3fr 1.3fr 1.2fr',gap:0,padding:'0 20px',borderBottom:i<shown.length-1?'1px solid #F4EEDE':'none',background:'#fff',transition:'.1s',alignItems:'center',minHeight:56}}>
@@ -1771,8 +1783,8 @@ function Settings(){
                 </div>
               </div>
               {/* Role */}
-              <div style={{paddingLeft:8}}>
-                <span style={{fontSize:12,fontWeight:600,color:rs.c,background:rs.bg,border:`1px solid ${rs.bdr}`,padding:'3px 10px',borderRadius:20,display:'inline-block'}}>{rs.label}</span>
+              <div style={{paddingLeft:8,display:'flex',flexWrap:'wrap',gap:4}}>
+                {getRoles(u).map(r=>{const rs=UA_ROLE_STYLES[r]||UA_ROLE_STYLES.staff;return <span key={r} style={{fontSize:11,fontWeight:700,padding:'3px 9px',borderRadius:20,background:rs.bg,color:rs.c,border:`1px solid ${rs.bdr}`,whiteSpace:'nowrap',display:'inline-block'}}>{rs.label}</span>;})}
               </div>
               {/* Board rate */}
               <div style={{paddingLeft:8}}>
@@ -1826,8 +1838,8 @@ function Settings(){
         </div>}>
         <div style={{display:'flex',flexDirection:'column',gap:13}}>
           <G2><Inp label="Full name" value={eF.name} onChange={v=>setEF(f=>({...f,name:v}))} req/><Inp label="Email" type="email" value={eF.email} onChange={v=>setEF(f=>({...f,email:v}))} req/></G2>
-          <Sel label="Role" value={eF.role} onChange={v=>setEF(f=>({...f,role:v}))} opts={[['owner','Stable Owner'],['manager','Manager'],['trainer','Trainer'],['staff','Staff / Groom'],['boarder','Boarder']]}/>
-          {eF.role==='boarder'&&<Inp label="Monthly board rate ($)" type="number" value={String(eF.rate)} onChange={v=>setEF(f=>({...f,rate:v}))}/>}
+          <RolePicker value={eF.role||'boarder'} onChange={v=>setEF(f=>({...f,role:v}))}/>
+          {hasRole({role:eF.role},'boarder')&&<Inp label="Monthly board rate ($)" type="number" value={String(eF.rate||'')} onChange={v=>setEF(f=>({...f,rate:v}))}/>}}
           {editUser&&editUser.id===db.getAuth()?.userId
             ?<Inp label="Set / reset password" value={eF.password} onChange={v=>setEF(f=>({...f,password:v}))} placeholder="Leave blank to keep current"/>
             :<div>
@@ -1852,7 +1864,7 @@ function Settings(){
         footer={<><Btn v="secondary" onClick={()=>setInvite(false)}>Cancel</Btn><Btn onClick={saveInvite} disabled={!iF.name||!iF.email}>Send invite</Btn></>}>
         <div style={{display:'flex',flexDirection:'column',gap:13}}>
           <G2><Inp label="Full name" value={iF.name} onChange={v=>setIF(f=>({...f,name:v}))} placeholder="Jane Smith" req/><Inp label="Email" type="email" value={iF.email} onChange={v=>setIF(f=>({...f,email:v}))} placeholder="jane@email.com" req/></G2>
-          <Sel label="Role" value={iF.role} onChange={v=>setIF(f=>({...f,role:v}))} opts={[['owner','Stable Owner'],['manager','Manager'],['trainer','Trainer'],['staff','Staff / Groom'],['boarder','Boarder']]}/>
+          <RolePicker value={iF.role||'boarder'} onChange={v=>setIF(f=>({...f,role:v}))}/>
           <Inp label="Temporary password" value={iF.password} onChange={v=>setIF(f=>({...f,password:v}))}/>
         </div>
       </Modal>
