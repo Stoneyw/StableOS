@@ -1679,11 +1679,7 @@ const ROLE_OPTS=[['owner','Stable Owner'],['manager','Manager'],['trainer','Trai
 const RolePicker=({value,onChange})=>{
   const selected=(value||'boarder').split(',').map(r=>r.trim()).filter(Boolean);
   const toggle=r=>{const next=selected.includes(r)?selected.filter(x=>x!==r):[...selected,r];onChange(next.length?next.join(','):'boarder');};
-  return <div><div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Roles (select all that apply)</div><div style={{display:'flex',flexWrap:'wrap',gap:7}}>{ROLE_OPTS.map(([r,label])=>{const on=selected.includes(r);return <button key={r} type="button" onClick={()=>toggle(r)} style={{display:'flex',alignItems:'center',gap:5,padding:'6px 13px',borderRadius:20,border:`1.5px solid ${on?'#1C3A2E':'#E4D9C0'}`,background:on?'#1C3A2E':'#fff',color:on?'#F1EBDB':'#5a5345',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',transition:'.15s'}}>{on&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}{label}</button>;})}</div></div>;
-};
-  trainer:{label:'Trainer',      c:'#3C7A57',bg:'#E5F0E7',bdr:'#B8D9C2'},
-  staff:  {label:'Staff / Groom',c:'#9c7026',bg:'#F6ECD2',bdr:'#E2C68A'},
-  boarder:{label:'Boarder',      c:'#5a5345',bg:'#F1EADA',bdr:'#E0D0B8'},
+  return <div><div style={{fontSize:11,fontWeight:700,color:'#9a9081',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Roles (select all that apply)</div><div style={{display:'flex',flexWrap:'wrap',gap:7}}>{ROLE_OPTS.map(([r,label])=>{const on=selected.includes(r);return <button key={r} type="button" onClick={()=>toggle(r)} style={{display:'flex',alignItems:'center',gap:5,padding:'6px 13px',borderRadius:20,border:`1.5px solid ${on?'#1C3A2E':'#E4D9C0'}`,background:on?'#1C3A2E':'#fff',color:on?'#F1EBDB':'#5a5345',fontFamily:'inherit',fontSize:13,fontWeight:600,cursor:'pointer',transition:'.15s'}}>{on&&<svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3.5' strokeLinecap='round' strokeLinejoin='round'><path d='M20 6 9 17l-5-5'/></svg>}{label}</button>;})}</div></div>;
 };
 const PW_STYLES={
   active:   {label:'Active',             dot:'#3C7A57',c:'#3C7A57',bg:'#E5F0E7',bdr:'#B8D9C2'},
